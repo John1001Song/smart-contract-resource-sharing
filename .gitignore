@@ -1,0 +1,4 @@
+election/node_modules
+*.png
+election/src/fonts
+election/src/images
