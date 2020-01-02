@@ -32,5 +32,16 @@ contract Election {
 
         voters[msg.sender] = true;
         candidates[_candidateId].voteCount += 1;
+
+        emit votedEvent(_candidateId);
     }
+
+    function deVote (uint _candidateId) public {
+        voters[msg.sender] = false;
+        candidates[_candidateId].voteCount -= 1;
+    }
+
+    event votedEvent (
+        uint indexed _candidateId
+    );
 }
