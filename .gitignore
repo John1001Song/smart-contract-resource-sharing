@@ -2,3 +2,8 @@ election/node_modules
 *.png
 election/src/fonts
 election/src/images
+
+linked_list/node_modules
+*.png
+linked_list/src/fonts
+linked_list/src/images
