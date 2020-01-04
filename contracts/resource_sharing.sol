@@ -18,17 +18,54 @@ contract ResourceSharing is Logger {
     }
 
     bytes32 public head;
-    bool public iseq;
     mapping (bytes32 => Provider) public providerList;
 
-    constructor() public {
-        
+    constructor() public {}
+
+    event AddProvider(bytes32 id, bytes32 next, string _name, uint _target, uint _start, uint _end);
+
+    function addProvider(string memory _name, uint _target, uint _start, uint _end) public returns (bool) {
+        // empty provider list
+        if (head == 0x0) {
+            bytes32 id = keccak256(abi.encodePacked(_name, _target, _start, _end));
+            Provider memory provider = Provider(id, 0x0, _name, _target, _start, _end);
+            head = id;
+            providerList[id] = provider;
+            // logProvider("add provider", provider);
+            emit AddProvider(provider.id, provider.next, provider.name, provider.target, provider.start, provider.end);
+            return true;
+        }
+        bytes32 curBytes = head;
+        bytes32 nextBytes;
+        Provider memory current;
+        Provider memory next;
+        while (true) {
+            current = providerList[curBytes];
+            nextBytes = current.next;
+            next = providerList[nextBytes];
+            if (nextBytes == 0x0 || _end <= next.end) {
+                // (1) reach the end of the linked list; (2) Or, insert between current and next
+                bytes32 id = keccak256(abi.encodePacked(_name, _target, _start, _end));
+                current.next = id;
+                Provider memory provider = Provider(id, nextBytes, _name, _target, _start, _end);
+                providerList[id] = provider;
+                // logProvider("add provider", provider);
+                emit AddProvider(provider.id, provider.next, provider.name, provider.target, provider.start, provider.end);
+                return true;
+            }
+            curBytes = nextBytes;
+        }
+        return false;
     }
 
-    function test() public returns (bool) {
-        iseq = (head == 0x0);
-        log("logging:", iseq);
-        return iseq;
+    function logProvider(string memory msg, Provider memory provider) private {
+        log(msg);
+        log("id=", provider.id);
+        log("next=", provider.next);
+        log("name=", provider.name);
+        log("target=", provider.target);
+        log("start=", provider.start);
+        log("end=", provider.end);
     }
 }
 
