@@ -1,18 +1,27 @@
 var resourseSharing = artifacts.require("./ResourceSharing.sol");
 
+function sleep(delay) {
+  var start = (new Date()).getTime();
+  while ((new Date()).getTime() - start < delay) {
+    continue;
+  }
+}
+
 contract("ResourceSharing", function(accounts) {
   var rsInstance;
+  var start = 7999999999;
+  var end = 9999999999;
 
-  it("add 3 providers consecutively", function() {
+  it("add providers", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
-      return rsInstance.addProvider("hello", 1, 2, 3);
+      return rsInstance.addProvider("hello", 1, start, end);
     }).then(function(addEvent) {
       // console.log("json=", JSON.stringify(addEvent))
-      return rsInstance.addProvider("world", 4, 5, 6);
+      return rsInstance.addProvider("world", 2, start, end);
     }).then(function(addEvent) {
       // console.log("json=", JSON.stringify(addEvent))
-      return rsInstance.addProvider("test", 7, 8, 9);
+      return rsInstance.addProvider("test", 3, start, end);
     }).then(function(addEvent) {
       // console.log("json=", JSON.stringify(addEvent))
       return rsInstance.head();
@@ -21,93 +30,61 @@ contract("ResourceSharing", function(accounts) {
     }).then(function(provider) {
       assert("hello", provider.name);
       assert(1, provider.target);
-      assert(2, provider.start);
-      assert(3, provider.end);
+      assert(start, provider.start);
+      assert(end, provider.end);
       return rsInstance.providerList(provider.next);
     }).then(function(provider) {
       assert("world", provider.name);
       assert(4, provider.target);
-      assert(5, provider.start);
-      assert(6, provider.end);
+      assert(start, provider.start);
+      assert(end, provider.end);
       return rsInstance.providerList(provider.next);
     }).then(function(provider) {
       assert("test", provider.name);
       assert(7, provider.target);
-      assert(8, provider.start);
-      assert(9, provider.end);
+      assert(start, provider.start);
+      assert(end, provider.end);
       assert('0x0', provider.next);
     });
   });
 
-  it("add provider in middle", function() {
+  it("remove expired providers", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
-      return rsInstance.addProvider("hello", 1, 2, 3);
-    }).then(function(addEvent) {
-      // console.log("json=", JSON.stringify(addEvent))
-      return rsInstance.addProvider("test", 7, 8, 9);
-    }).then(function(addEvent) {
-      // console.log("json=", JSON.stringify(addEvent))
-      return rsInstance.addProvider("world", 4, 5, 6);
-    }).then(function(addEvent) {
-      // console.log("json=", JSON.stringify(addEvent))
+      var start = Math.round(new Date().getTime() / 1000) + 1;
+      rsInstance.addProvider("hello", 1, start, start + 1);
       return rsInstance.head();
     }).then(function(head) {
       return rsInstance.providerList(head);
     }).then(function(provider) {
       assert("hello", provider.name);
-      assert(1, provider.target);
-      assert(2, provider.start);
-      assert(3, provider.end);
-      return rsInstance.providerList(provider.next);
-    }).then(function(provider) {
-      assert("world", provider.name);
-      assert(4, provider.target);
-      assert(5, provider.start);
-      assert(6, provider.end);
-      return rsInstance.providerList(provider.next);
+      sleep(2000);
+      rsInstance.addProvider("test", 3, start, end);
+      return rsInstance.head();
+    }).then(function(addEvent) {
+      return rsInstance.head();
+    }).then(function(head) {
+      return rsInstance.providerList(head);
     }).then(function(provider) {
       assert("test", provider.name);
-      assert(7, provider.target);
-      assert(8, provider.start);
-      assert(9, provider.end);
-      assert('0x0', provider.next);
     });
   });
 
-  it("add provider in reverse order", function() {
+  it("bad parameter end", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
-      return rsInstance.addProvider("test", 7, 8, 9);
-    }).then(function(addEvent) {
-      // console.log("json=", JSON.stringify(addEvent))
-      return rsInstance.addProvider("world", 4, 5, 6);
-    }).then(function(addEvent) {
-      // console.log("json=", JSON.stringify(addEvent))
-      return rsInstance.addProvider("hello", 1, 2, 3);
-    }).then(function(addEvent) {
-      // console.log("json=", JSON.stringify(addEvent))
-      return rsInstance.head();
-    }).then(function(head) {
-      return rsInstance.providerList(head);
-    }).then(function(provider) {
-      assert("hello", provider.name);
-      assert(1, provider.target);
-      assert(2, provider.start);
-      assert(3, provider.end);
-      return rsInstance.providerList(provider.next);
-    }).then(function(provider) {
-      assert("world", provider.name);
-      assert(4, provider.target);
-      assert(5, provider.start);
-      assert(6, provider.end);
-      return rsInstance.providerList(provider.next);
-    }).then(function(provider) {
-      assert("test", provider.name);
-      assert(7, provider.target);
-      assert(8, provider.start);
-      assert(9, provider.end);
-      assert('0x0', provider.next);
+      return rsInstance.addProvider("hello", 1, 1, 1);
+    }).then(assert.fail).catch(function(error) {
+      assert(error.message.indexOf('revert') >= 0, "error message must contain revert");
+    });
+  });
+
+  it("bad parameter start", function() {
+    return resourseSharing.deployed().then(function(instance) {
+      rsInstance = instance;
+      return rsInstance.addProvider("hello", 1, 9999999999, 7999999999);
+    }).then(assert.fail).catch(function(error) {
+      assert(error.message.indexOf('revert') >= 0, "error message must contain revert");
     });
   });
 });

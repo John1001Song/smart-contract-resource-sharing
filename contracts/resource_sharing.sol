@@ -25,6 +25,25 @@ contract ResourceSharing is Logger {
     event AddProvider(bytes32 id, bytes32 next, string _name, uint _target, uint _start, uint _end);
 
     function addProvider(string memory _name, uint _target, uint _start, uint _end) public returns (bool) {
+        bytes32 curBytes = head;
+        bytes32 nextBytes;
+        Provider memory current;
+        Provider memory next;
+
+        // remove expired providers
+        while (true) {
+            current = providerList[curBytes];
+            if (curBytes == 0x0 || current.end > now) {
+                break;
+            }
+            curBytes = current.next;
+        }
+        head = curBytes;
+
+        // validate _end
+        require(_end > now, "bad end time");
+        require(_start < _end, "bad start time");
+
         // empty provider list
         if (head == 0x0) {
             bytes32 id = keccak256(abi.encodePacked(_name, _target, _start, _end));
@@ -35,16 +54,14 @@ contract ResourceSharing is Logger {
             emit AddProvider(provider.id, provider.next, provider.name, provider.target, provider.start, provider.end);
             return true;
         }
-        bytes32 curBytes = head;
-        bytes32 nextBytes;
-        Provider memory current;
-        Provider memory next;
+
+        // loop
         while (true) {
             current = providerList[curBytes];
             nextBytes = current.next;
             next = providerList[nextBytes];
             if (nextBytes == 0x0 || _end <= next.end) {
-                // (1) reach the end of the linked list; (2) Or, insert between current and next
+                // Do insertion when (1) reached the end of the linked list; (2) Or, insert between current and next
                 bytes32 id = keccak256(abi.encodePacked(_name, _target, _start, _end));
                 current.next = id;
                 Provider memory provider = Provider(id, nextBytes, _name, _target, _start, _end);
