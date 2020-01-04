@@ -3,18 +3,24 @@ pragma solidity 0.5.12;
 import "./logger.sol";
 
 contract ResourceSharing is Logger {
-    event AddEntry(bytes32 head,uint number, string name,bytes32 next);
 
-    uint public length = 0;//also used as nonce
-
-    struct Provider{
+    struct Provider {
         bytes32 id;
         bytes32 next;
 
         string name;
+        address addr;
         uint target;
         uint start;
         uint end;
+    }
+
+    struct Consumer {
+        bytes32 id;
+        bytes32 next;
+
+        string name;
+
     }
 
     bytes32 public head;
@@ -22,7 +28,7 @@ contract ResourceSharing is Logger {
 
     constructor() public {}
 
-    event AddProvider(bytes32 id, bytes32 next, string _name, uint _target, uint _start, uint _end);
+    event AddProvider(bytes32 id, bytes32 next, string _name, address _addr, uint _target, uint _start, uint _end);
 
     function addProvider(string memory _name, uint _target, uint _start, uint _end) public returns (bool) {
         bytes32 curBytes = head;
@@ -40,18 +46,18 @@ contract ResourceSharing is Logger {
         }
         head = curBytes;
 
-        // validate _end
+        // validate parameters
         require(_end > now, "bad end time");
         require(_start < _end, "bad start time");
 
         // empty provider list
         if (head == 0x0) {
             bytes32 id = keccak256(abi.encodePacked(_name, _target, _start, _end));
-            Provider memory provider = Provider(id, 0x0, _name, _target, _start, _end);
+            Provider memory provider = Provider(id, 0x0, _name, msg.sender, _target, _start, _end);
             head = id;
             providerList[id] = provider;
             // logProvider("add provider", provider);
-            emit AddProvider(provider.id, provider.next, provider.name, provider.target, provider.start, provider.end);
+            emit AddProvider(provider.id, provider.next, provider.name, provider.addr, provider.target, provider.start, provider.end);
             return true;
         }
 
@@ -64,10 +70,10 @@ contract ResourceSharing is Logger {
                 // Do insertion when (1) reached the end of the linked list; (2) Or, insert between current and next
                 bytes32 id = keccak256(abi.encodePacked(_name, _target, _start, _end));
                 current.next = id;
-                Provider memory provider = Provider(id, nextBytes, _name, _target, _start, _end);
+                Provider memory provider = Provider(id, nextBytes, _name, msg.sender, _target, _start, _end);
                 providerList[id] = provider;
                 // logProvider("add provider", provider);
-                emit AddProvider(provider.id, provider.next, provider.name, provider.target, provider.start, provider.end);
+                emit AddProvider(provider.id, provider.next, provider.name, provider.addr, provider.target, provider.start, provider.end);
                 return true;
             }
             curBytes = nextBytes;
@@ -80,6 +86,7 @@ contract ResourceSharing is Logger {
         log("id=", provider.id);
         log("next=", provider.next);
         log("name=", provider.name);
+        log("address=", provider.addr);
         log("target=", provider.target);
         log("start=", provider.start);
         log("end=", provider.end);
