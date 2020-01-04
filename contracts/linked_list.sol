@@ -1,8 +1,6 @@
-
 pragma solidity 0.5.12;
 
 contract LinkedList {
-
     event AddEntry(bytes32 head,uint number, string name,bytes32 next);
 
     uint public length = 0;//also used as nonce
@@ -27,6 +25,14 @@ contract LinkedList {
         head = id;
         length = length+1;
         emit AddEntry(head,object.number,object.name,object.next);
+    }
+
+    function getHead() public returns (bytes32) {
+        return head;
+    }
+
+    function getName(bytes32 _id) public returns (string memory) {
+        return objects[_id].name;
     }
 
     //needed for external contract access to struct
