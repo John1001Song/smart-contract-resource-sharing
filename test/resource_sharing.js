@@ -134,7 +134,7 @@ contract("ResourceSharing", function(accounts) {
       assert.equal(provider.name, "provider4");
       assert.equal(provider.target, 4);
       assert.equal(provider.next, 0x0);
-      return rsInstance.matchings(accounts[0]);
+      return rsInstance.matchings(accounts[0], 0);
     }).then(function(match) {
       assert.equal(match.providerName, "world");
       assert.equal(match.providerAddr, accounts[0]);
@@ -143,15 +143,7 @@ contract("ResourceSharing", function(accounts) {
       assert.equal(match.price, 2);
       assert.equal(match.start, start);
       assert.equal(match.duration, 100);
-      return rsInstance.matchings(accounts[1]);
-    }).then(function(match) {
-      assert.equal(match.providerName, "world");
-      assert.equal(match.providerAddr, accounts[0]);
-      assert.equal(match.consumerName, "consumer1");
-      assert.equal(match.consumerAddr, accounts[1]);
-      assert.equal(match.price, 2);
-      assert.equal(match.start, start);
-      assert.equal(match.duration, 100);
+      return rsInstance.getMatchingListLength(accounts[1]);
     });
   });
 });

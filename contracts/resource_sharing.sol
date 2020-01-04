@@ -40,7 +40,7 @@ contract ResourceSharing is Logger {
     uint256 public maxMatchInterval;
     bytes32 public head;
     mapping (bytes32 => Provider) public providerList;
-    mapping (address => Matching) public matchings;
+    mapping (address => Matching[]) public matchings;
 
     event AddProvider(bytes32 id, bytes32 next, string _name, address _addr, uint _target, uint _start, uint _end);
     event Matched(string providerName, address providerAddr, string consumerName, address consumerAddr, uint256 price, uint time, uint start, uint duration);
@@ -95,7 +95,7 @@ contract ResourceSharing is Logger {
 
     function addConsumer(string memory _name, uint _budget, uint _duration, uint _deadline) public returns (bool) {
         require(now + _duration + maxMatchInterval < _deadline, "not enough time to consume resource");
-        
+
         // remove expired providers
         removeExpiredProviders();
 
@@ -113,8 +113,10 @@ contract ResourceSharing is Logger {
             if (provider.start + maxMatchInterval + _duration < provider.end ) {
                 // matched
                 Matching memory m = Matching(provider.name, provider.addr, _name, msg.sender, _budget, now, provider.start, _duration);
-                matchings[provider.addr] = m;
-                matchings[msg.sender] = m;
+                log("len=", matchings[provider.addr].length);
+                matchings[provider.addr].push(m);
+                log("len=", matchings[provider.addr].length);
+                matchings[msg.sender].push(m);
                 emit Matched(provider.name, provider.addr, _name, msg.sender, _budget, now, provider.start, _duration);
 
                 // increase provider's start
@@ -129,6 +131,10 @@ contract ResourceSharing is Logger {
         return false;
     }
 
+    function getMatchingListLength(address _addr) public returns (uint) {
+        return matchings[_addr].length;
+    }
+
     function removeExpiredProviders() public {
         bytes32 curBytes = head;
         Provider memory current = providerList[head];
@@ -141,17 +147,6 @@ contract ResourceSharing is Logger {
             curBytes = current.next;
         }
         head = curBytes;
-    }
-
-    function logProvider(string memory msg, Provider memory provider) private {
-        log(msg);
-        log("id=", provider.id);
-        log("next=", provider.next);
-        log("name=", provider.name);
-        log("address=", provider.addr);
-        log("target=", provider.target);
-        log("start=", provider.start);
-        log("end=", provider.end);
     }
 }
 
