@@ -6,7 +6,7 @@ function sleep(delay) {
     continue;
   }
 }
-
+/*
 contract("ResourceSharing", function(accounts) {
   var rsInstance;
   var start = 7999999999;
@@ -147,3 +147,4 @@ contract("ResourceSharing", function(accounts) {
     });
   });
 });
+*/

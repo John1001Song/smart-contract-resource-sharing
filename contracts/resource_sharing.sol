@@ -50,8 +50,14 @@ contract ResourceSharing is Logger {
         maxMatchInterval = 100 * 1000;
     }
 
+    // ALERT: delete this method before deploying contract on the main chain!!!!!
+    function reset() public {
+        head = 0x0;
+    }
+
     function addProvider(string memory _name, uint _target, uint _start, uint _end) public returns (bool) {
         require(_end > now, "bad end time");
+
         require(_start < _end, "bad start time");
 
         // remove expired providers
