@@ -9,6 +9,7 @@ contract ResourceSharing is Logger {
         bytes32 next;
 
         string name;
+        string city;
         address addr;
         uint target;
         uint start;
@@ -20,6 +21,7 @@ contract ResourceSharing is Logger {
         bytes32 next;
 
         string name;
+        string city;
         address addr;
         uint budget;
         uint duration;
@@ -31,6 +33,7 @@ contract ResourceSharing is Logger {
         address providerAddr;
         string consumerName;
         address consumerAddr;
+        string city;
         uint256 price;
         uint matchedTime;
         uint start;
@@ -38,12 +41,12 @@ contract ResourceSharing is Logger {
     }
 
     uint256 public maxMatchInterval;
-    bytes32 public head;
+    mapping (string => bytes32) public headList;
     mapping (bytes32 => Provider) public providerList;
     mapping (address => Matching[]) public matchings;
 
-    event AddProvider(bytes32 id, bytes32 next, string _name, address _addr, uint _target, uint _start, uint _end);
-    event Matched(string providerName, address providerAddr, string consumerName, address consumerAddr, uint256 price, uint time, uint start, uint duration);
+    event AddProvider(bytes32 id, bytes32 next, string _name, string _city, address _addr, uint _target, uint _start, uint _end);
+    event Matched(string providerName, address providerAddr, string consumerName, address consumerAddr, string _city, uint256 price, uint time, uint start, uint duration);
 
     constructor() public {
         // 100 seconds
@@ -51,18 +54,18 @@ contract ResourceSharing is Logger {
     }
 
     // ALERT: delete this method before deploying contract on the main chain!!!!!
-    function reset() public {
-        head = 0x0;
+    function reset(string memory _city) public {
+        headList[_city] = 0x0;
     }
 
-    function addProvider(string memory _name, uint _target, uint _start, uint _end) public returns (bool) {
+    function addProvider(string memory _name, string memory _city, uint _target, uint _start, uint _end) public returns (bool) {
         require(_end > now, "bad end time");
-
         require(_start < _end, "bad start time");
 
         // remove expired providers
-        removeExpiredProviders();
+        removeExpiredProviders(_city);
 
+        bytes32 head = headList[_city];
         bytes32 curBytes = head;
         bytes32 nextBytes;
         Provider memory current = providerList[head];
@@ -71,11 +74,11 @@ contract ResourceSharing is Logger {
 
         // Do insertion at head when (1) empty provider list; (2) Or, _end <= first end
         if (head == 0x0 || _end <= current.end) {
-            Provider memory provider = Provider(id, current.id, _name, msg.sender, _target, _start, _end);
-            head = id;
+            Provider memory provider = Provider(id, current.id, _name, _city, msg.sender, _target, _start, _end);
+            headList[_city] = id;
             providerList[id] = provider;
             // logProvider("add provider", provider);
-            emit AddProvider(provider.id, provider.next, provider.name, provider.addr, provider.target, provider.start, provider.end);
+            emit AddProvider(provider.id, provider.next, provider.name, provider.city, provider.addr, provider.target, provider.start, provider.end);
             return true;
         }
 
@@ -88,10 +91,10 @@ contract ResourceSharing is Logger {
                 // Do insertion when (1) reached the end of the linked list; (2) Or, insert between current and next
                 current.next = id;
                 providerList[curBytes] = current;
-                Provider memory provider = Provider(id, nextBytes, _name, msg.sender, _target, _start, _end);
+                Provider memory provider = Provider(id, nextBytes, _name, _city, msg.sender, _target, _start, _end);
                 providerList[id] = provider;
                 // logProvider("add provider", provider);
-                emit AddProvider(provider.id, provider.next, provider.name, provider.addr, provider.target, provider.start, provider.end);
+                emit AddProvider(provider.id, provider.next, provider.name, provider.city, provider.addr, provider.target, provider.start, provider.end);
                 return true;
             }
             curBytes = nextBytes;
@@ -99,12 +102,13 @@ contract ResourceSharing is Logger {
         return false;
     }
 
-    function addConsumer(string memory _name, uint _budget, uint _duration, uint _deadline) public returns (bool) {
+    function addConsumer(string memory _name, string memory _city, uint _budget, uint _duration, uint _deadline) public returns (bool) {
         require(now + _duration + maxMatchInterval < _deadline, "not enough time to consume resource");
 
         // remove expired providers
-        removeExpiredProviders();
+        removeExpiredProviders(_city);
 
+        bytes32 head = headList[_city];
         bytes32 curBytes = head;
         Provider memory provider;
         while (true) {
@@ -118,12 +122,10 @@ contract ResourceSharing is Logger {
             }
             if (provider.start + maxMatchInterval + _duration < provider.end ) {
                 // matched
-                Matching memory m = Matching(provider.name, provider.addr, _name, msg.sender, _budget, now, provider.start, _duration);
-                log("len=", matchings[provider.addr].length);
+                Matching memory m = Matching(provider.name, provider.addr, _name, msg.sender, _city, _budget, now, provider.start, _duration);
                 matchings[provider.addr].push(m);
-                log("len=", matchings[provider.addr].length);
                 matchings[msg.sender].push(m);
-                emit Matched(provider.name, provider.addr, _name, msg.sender, _budget, now, provider.start, _duration);
+                emit Matched(provider.name, provider.addr, _name, msg.sender, _city, _budget, now, provider.start, _duration);
 
                 // increase provider's start
                 // TODO: if new start > end, remove provider
@@ -137,11 +139,8 @@ contract ResourceSharing is Logger {
         return false;
     }
 
-    function getMatchingListLength(address _addr) public returns (uint) {
-        return matchings[_addr].length;
-    }
-
-    function removeExpiredProviders() public {
+    function removeExpiredProviders(string memory _city) public {
+        bytes32 head = headList[_city];
         bytes32 curBytes = head;
         Provider memory current = providerList[head];
 
@@ -152,7 +151,7 @@ contract ResourceSharing is Logger {
             }
             curBytes = current.next;
         }
-        head = curBytes;
+        headList[_city] = curBytes;
     }
 }
 

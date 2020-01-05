@@ -1,12 +1,11 @@
 var resourseSharing = artifacts.require("./ResourceSharing.sol");
-
+/*
 function sleep(delay) {
   var start = (new Date()).getTime();
   while ((new Date()).getTime() - start < delay) {
     continue;
   }
 }
-/*
 contract("ResourceSharing", function(accounts) {
   var rsInstance;
   var start = 7999999999;
@@ -16,7 +15,7 @@ contract("ResourceSharing", function(accounts) {
   it("bad provider parameter end", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
-      return rsInstance.addProvider("hello", 1, 1, 1);
+      return rsInstance.addProvider("hello", "SF", 1, 1, 1);
     }).then(assert.fail).catch(function(error) {
       assert(error.message.indexOf('revert') >= 0, "error message must contain revert");
     });
@@ -25,7 +24,7 @@ contract("ResourceSharing", function(accounts) {
   it("bad provider parameter start", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
-      return rsInstance.addProvider("hello", 1, 9999999999, 7999999999);
+      return rsInstance.addProvider("hello", "SF", 1, 9999999999, 7999999999);
     }).then(assert.fail).catch(function(error) {
       assert(error.message.indexOf('revert') >= 0, "error message must contain revert");
     });
@@ -34,15 +33,15 @@ contract("ResourceSharing", function(accounts) {
   it("add providers", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
-      return rsInstance.addProvider("hello", 3, start, end, { from: accounts[0] });
+      return rsInstance.addProvider("hello", "SF", 3, start, end, { from: accounts[0] });
     }).then(function(addEvent) {
-      return rsInstance.addProvider("world", 2, start, end, { from: accounts[0] });
+      return rsInstance.addProvider("world", "SF", 2, start, end, { from: accounts[0] });
     }).then(function(addEvent) {
-      return rsInstance.addProvider("test", 1, start, end, { from: accounts[0] });
+      return rsInstance.addProvider("test", "SF", 1, start, end, { from: accounts[0] });
     }).then(function(addEvent) {
-      return rsInstance.addProvider("provider4", 4, start, end+1, { from: accounts[0] });
+      return rsInstance.addProvider("provider4", "SF", 4, start, end+1, { from: accounts[0] });
     }).then(function(addEvent) {
-      return rsInstance.head();
+      return rsInstance.headList("SF");
     }).then(function(head) {
       return rsInstance.providerList(head);
     }).then(function(provider) {
@@ -72,12 +71,37 @@ contract("ResourceSharing", function(accounts) {
     });
   });
 
+  it("add providers in another city", function() {
+    return resourseSharing.deployed().then(function(instance) {
+      rsInstance = instance;
+      return rsInstance.addProvider("NYC1", "NYC", 3, start, end, { from: accounts[0] });
+    }).then(function(addEvent) {
+      return rsInstance.addProvider("NYC2", "NYC", 2, start, end, { from: accounts[0] });
+    }).then(function(addEvent) {
+      return rsInstance.headList("NYC");
+    }).then(function(head) {
+      return rsInstance.providerList(head);
+    }).then(function(provider) {
+      assert.equal(provider.name, "NYC2");
+      assert.equal(provider.target, 2);
+      assert.equal(provider.start, start);
+      assert.equal(provider.end, end);
+      return rsInstance.providerList(provider.next);
+    }).then(function(provider) {
+      assert.equal(provider.name, "NYC1");
+      assert.equal(provider.target, 3);
+      assert.equal(provider.start, start);
+      assert.equal(provider.end, end);
+      assert.equal(provider.next, 0x0);
+    });
+  });
+
   it("remove expired providers", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
       var start = Math.round(new Date().getTime() / 1000);
-      rsInstance.addProvider("remove1", 1, start, start + 1);
-      return rsInstance.head();
+      rsInstance.addProvider("remove1", "SF", 1, start, start + 1);
+      return rsInstance.headList("SF");
     }).then(function(head) {
       return rsInstance.providerList(head);
     }).then(function(provider) {
@@ -86,13 +110,13 @@ contract("ResourceSharing", function(accounts) {
 
       // test remove when adding
       var start = Math.round(new Date().getTime() / 1000);
-      return rsInstance.addProvider("remove2", 1, start, start + 1);
+      return rsInstance.addProvider("remove2", "SF", 1, start, start + 1);
     }).then(function(addProviderEvent) {
       sleep(2000);
 
       // test remove()
-      rsInstance.removeExpiredProviders();
-      return rsInstance.head();
+      rsInstance.removeExpiredProviders("SF");
+      return rsInstance.headList("SF");
     }).then(function(head) {
       return rsInstance.providerList(head);
     }).then(function(provider) {
@@ -103,7 +127,7 @@ contract("ResourceSharing", function(accounts) {
   it("bad consumer parameter duration and deadline", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
-      return rsInstance.addConsumer("hello", 1, 1000, 1);
+      return rsInstance.addConsumer("hello", "SF", 1, 1000, 1);
     }).then(assert.fail).catch(function(error) {
       assert(error.message.indexOf('revert') >= 0, "error message must contain revert");
     });
@@ -112,8 +136,8 @@ contract("ResourceSharing", function(accounts) {
   it("add consumer", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
-      rsInstance.addConsumer("consumer1", 2, 100, end, { from: accounts[1] })
-      return rsInstance.head();
+      rsInstance.addConsumer("consumer1", "SF", 2, 100, end, { from: accounts[1] })
+      return rsInstance.headList("SF");
     }).then(function(head) {
       return rsInstance.providerList(head);
     }).then(function(provider) {

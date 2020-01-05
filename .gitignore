@@ -7,3 +7,5 @@ linked_list/node_modules
 *.png
 linked_list/src/fonts
 linked_list/src/images
+
+.idea
