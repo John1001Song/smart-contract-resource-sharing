@@ -72,12 +72,11 @@ contract ResourceSharing is Logger {
         Provider memory next;
         bytes32 id = keccak256(abi.encodePacked(_name, _target, _start, _end, now));
 
-        // Do insertion at head when (1) empty provider list; (2) Or, _end <= first end
-        if (head == 0x0 || _end <= current.end) {
+        // Do insertion at head when (1) empty provider list; (2) Or, _end < first end; (3) Or, _end == firest end && _start >= first start
+        if isBetweenCurrentAndNext(head, _start, _end, current.start, current.end) {
             Provider memory provider = Provider(id, current.id, _name, _city, msg.sender, _target, _start, _end);
             headList[_city] = id;
             providerList[id] = provider;
-            // logProvider("add provider", provider);
             emit AddProvider(provider.id, provider.next, provider.name, provider.city, provider.addr, provider.target, provider.start, provider.end);
             return true;
         }
@@ -87,19 +86,22 @@ contract ResourceSharing is Logger {
             current = providerList[curBytes];
             nextBytes = current.next;
             next = providerList[nextBytes];
-            if (nextBytes == 0x0 || _end <= next.end) {
+            if isBetweenCurrentAndNext(nextBytes, _start, _end, next.start, next.end) {
                 // Do insertion when (1) reached the end of the linked list; (2) Or, insert between current and next
                 current.next = id;
                 providerList[curBytes] = current;
                 Provider memory provider = Provider(id, nextBytes, _name, _city, msg.sender, _target, _start, _end);
                 providerList[id] = provider;
-                // logProvider("add provider", provider);
                 emit AddProvider(provider.id, provider.next, provider.name, provider.city, provider.addr, provider.target, provider.start, provider.end);
                 return true;
             }
             curBytes = nextBytes;
         }
         return false;
+    }
+
+    function isBetweenCurrentAndNext(bytes32 _nextBytes, uint _start, uint _end, uint _nextStart, uint _nextEnd) private returns (bool) {
+        return _nextBytes == 0x0 || _end < _nextEnd || (_end == _nextEnd && _start > next.start)
     }
 
     function addConsumer(string memory _name, string memory _city, uint _budget, uint _duration, uint _deadline) public returns (bool) {
@@ -131,6 +133,12 @@ contract ResourceSharing is Logger {
                 // TODO: if new start > end, remove provider
                 provider.start += maxMatchInterval + _duration;
                 providerList[provider.id] = provider;
+
+                // TODO: do deletion and insertion here to save gas
+                removeProvider(provider.id);
+                if (provider.start < provider.end) {
+                    addProvider(provider.name, provider.city, provider.target, provider.start, provider.end);
+                }
                 return true;
             } else {
                 curBytes = provider.next;
@@ -152,6 +160,31 @@ contract ResourceSharing is Logger {
             curBytes = current.next;
         }
         headList[_city] = curBytes;
+    }
+
+    function removeProvider(bytes32 _id, string memory _city) private {
+        bytes32 head = headList[_city];
+        if (head == 0x0) {
+            return
+        }
+        bytes32 curBytes = head;
+        Provider memory current = providerList[head];
+        Provider memory target = providerList[_id];
+        
+        if (head == _id) {
+            headList[_city] = current.next;
+            return
+        }
+
+        while (curBytes != 0x0) {
+            current = providerList[curBytes];
+            if (current.next == _id) {
+                current.next = target.next;
+                providerList[curBytes] = current;
+                break;
+            }
+            curBytes = current.next;
+        }
     }
 }
 
