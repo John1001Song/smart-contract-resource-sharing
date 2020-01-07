@@ -41,4 +41,9 @@ contract Logger {
     function log(string memory s) internal {
         emit LogMsg(s);
     }
+
+    event LogProvider(string, string, string, uint, uint);
+    function logProvider(string memory s, string memory name, string memory next, uint start, uint end) internal {
+        emit LogProvider(s, name, next, start, end);
+    }
 }

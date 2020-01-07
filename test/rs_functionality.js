@@ -1,5 +1,5 @@
 var resourseSharing = artifacts.require("./ResourceSharing.sol");
-/*
+
 function sleep(delay) {
   var start = (new Date()).getTime();
   while ((new Date()).getTime() - start < delay) {
@@ -33,7 +33,7 @@ contract("ResourceSharing", function(accounts) {
   it("add providers", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
-      return rsInstance.addProvider("hello", "SF", 3, start, end, { from: accounts[0] });
+      return rsInstance.addProvider("hello", "SF", 3, start+1, end, { from: accounts[0] });
     }).then(function(addEvent) {
       return rsInstance.addProvider("world", "SF", 2, start, end, { from: accounts[0] });
     }).then(function(addEvent) {
@@ -59,7 +59,7 @@ contract("ResourceSharing", function(accounts) {
     }).then(function(provider) {
       assert.equal(provider.name, "hello");
       assert.equal(provider.target, 3);
-      assert.equal(provider.start, start);
+      assert.equal(provider.start, start+1);
       assert.equal(provider.end, end);
       return rsInstance.providerList(provider.next);
     }).then(function(provider) {
@@ -133,7 +133,7 @@ contract("ResourceSharing", function(accounts) {
     });
   });
 
-  it("add consumer", function() {
+  it("add consumer, reorder provider", function() {
     return resourseSharing.deployed().then(function(instance) {
       rsInstance = instance;
       rsInstance.addConsumer("consumer1", "SF", 2, 100, end, { from: accounts[1] })
@@ -145,14 +145,14 @@ contract("ResourceSharing", function(accounts) {
       assert.equal(provider.target, 1);
       return rsInstance.providerList(provider.next);
     }).then(function(provider) {
+      assert.equal(provider.name, "hello");
+      assert.equal(provider.target, 3);
+      return rsInstance.providerList(provider.next);
+    }).then(function(provider) {
       assert.equal(provider.name, "world");
       assert.equal(provider.target, 2);
       assert.equal(provider.start, start + maxMatchInterval + 100);
       assert.equal(provider.end, end);
-      return rsInstance.providerList(provider.next);
-    }).then(function(provider) {
-      assert.equal(provider.name, "hello");
-      assert.equal(provider.target, 3);
       return rsInstance.providerList(provider.next);
     }).then(function(provider) {
       assert.equal(provider.name, "provider4");
@@ -167,8 +167,6 @@ contract("ResourceSharing", function(accounts) {
       assert.equal(match.price, 2);
       assert.equal(match.start, start);
       assert.equal(match.duration, 100);
-      return rsInstance.getMatchingListLength(accounts[1]);
     });
-  });
+  });  
 });
-*/

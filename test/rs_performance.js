@@ -86,7 +86,8 @@ function Test(accounts, num) {
     });
   })
 }
-
+/*
 contract("ResourceSharing", function(accounts) {
   Test(accounts, 5);
 });
+*/
