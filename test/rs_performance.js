@@ -27,7 +27,7 @@ function addConsumer(accounts, num) {
     rsInstance.addConsumer(name, 1, 100 * 1000, start + 300 * 1000, { from: accounts[1] });
   }
 }
-
+/*
 contract("ResourceSharing", function(accounts) {
   var curBytes, provider;
   var num = 10;
@@ -86,3 +86,4 @@ contract("ResourceSharing", function(accounts) {
     });
   })
 });
+*/
