@@ -120,6 +120,7 @@ contract ResourceSharing is Logger {
                 curBytes = provider.next;
                 continue;
             }
+            // check provider has time to process
             if (provider.start + maxMatchInterval + _duration < provider.end ) {
                 // matched
                 Matching memory m = Matching(provider.name, provider.addr, _name, msg.sender, _budget, now, provider.start, _duration);
