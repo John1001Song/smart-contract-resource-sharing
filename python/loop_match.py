@@ -1,6 +1,8 @@
 import json
 import random
+import time
 from web3 import Web3
+from datetime import datetime
 
 contract_path = '../build/contracts/ResourceSharing.json'
 ganache_url = 'http://localhost:7545'
@@ -42,8 +44,7 @@ class ResourceSharing:
         print(f"add provider, name={name}, target={target}, start={start}, end={end}")
         for retry in range(10):
             try:
-                self.contract.functions.addProvider(name, target, start, end).transact()
-                return
+                return self.contract.functions.addProvider(name, target, start, end).transact()
             except Exception as e:
                 if retry == 9:
                     print(f"Error in add_provider(): {e}")
@@ -53,8 +54,7 @@ class ResourceSharing:
         print(f"add consumer, name={name}, budget={budget}, duration={duration}, deadline={deadline}")
         for retry in range(10):
             try:
-                self.contract.functions.addConsumer(name, budget, duration, deadline).transact()
-                return
+                return self.contract.functions.addConsumer(name, budget, duration, deadline).transact()
             except Exception as e:
                 if retry == 9:
                     print(f"Error in add_provider(): {e}")
@@ -87,7 +87,7 @@ class ResourceSharing:
             try:
                 match = self.contract.functions.matchings(_address, idx).call()
                 matches.append(match)
-                print(match)
+                # print(match)
                 idx += 1
 
             except Exception as e:
@@ -102,11 +102,15 @@ class ResourceSharing:
     def set_address(self, _address):
         self.web3.eth.defaultAccount = _address
 
+    def get_transaction(self, _address):
+        return self.web3.eth.getTransaction(_address)
+
+
+def unix_now():
+    return int(time.mktime(datetime.now().utctimetuple()))
+
 
 if __name__ == '__main__':
-    rs = ResourceSharing()
-    rs.deploy_contract()
-
     num = 100
     budget_range = 50
     start_base = 3000000000
@@ -117,20 +121,31 @@ if __name__ == '__main__':
     duration_range = int((end_base - start_base) * 1 / 4)
     deadline_base = 5000000000
 
-    for j in range(1):
+    for j in range(10):
+        rs = ResourceSharing()
+        rs.deploy_contract()
+
+        consumer_creation = dict()
+        gas_provider = 0
+        gas_consumer = 0
+
         # add providers
         rs.set_address(rs.accounts[0])
         for i in range(num):
             rand = random.random()
-            rs.add_provider(f"provider #{i}", int(budget_range * rand), int(start_base + start_range * rand),
-                            int(end_base + end_range * rand))
+            tx = rs.add_provider(f"provider #{i}", int(budget_range * rand) + 1, int(start_base + start_range * rand),
+                                 int(end_base + end_range * rand))
+            gas_provider += rs.get_transaction(tx)['gas']
 
         rs.set_address(rs.accounts[1])
         # add consumers
         for i in range(num):
             rand = random.random()
-            rs.add_consumer(f"consumer #{i}", int(budget_range * rand), int(duration_base + duration_range * rand),
-                            deadline_base)
+            name = f"consumer #{i}"
+            consumer_creation[name] = unix_now()
+            tx = rs.add_consumer(name, int(budget_range * rand) + 1, int(duration_base + duration_range * rand),
+                                 deadline_base)
+            gas_consumer += rs.get_transaction(tx)['gas']
 
         matches_from = rs.list_matches(rs.accounts[0])
         matches_to = rs.list_matches(rs.accounts[1])
@@ -138,3 +153,15 @@ if __name__ == '__main__':
             print(f"Error! len_matches_from={len(matches_from)}, len_matches_to={len(matches_to)}")
         print(f"Engagement:\ntotal={num}, matches={len(matches_from)}, "
               f"engagement_rate={round(len(matches_from) / num * 100, 5)} % ")
+
+        # average matching time cost
+        time_total = 0
+        for each in matches_from:
+            time_total += each[5] - consumer_creation[each[2]]
+        print(f"\nMatching time cost:\ntotal={time_total}, num={num}, average_time_cost={time_total / num}s")
+
+        # average gas cost
+        print(f"\nAdd provider gas cost:\ntotal={gas_provider}, num={num}, "
+              f"average_gas_cost={gas_provider / num}wei = {gas_provider / num / 10 ** 18} ether")
+        print(f"\nAdd consumer and matching gas cost:\ntotal={gas_consumer}, num={num}, "
+              f"average_gas_cost={gas_consumer / num}wei = {gas_consumer / num / 10 ** 18} ether")
