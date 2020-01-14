@@ -1,0 +1,120 @@
+
+Engagement:
+total=75, matches=58, engagement_rate=77.33333 % 
+
+Matching time cost:
+total=39, num=75, average_time_cost=0.52s
+
+Add provider gas cost:
+total=30592885, num=75, average_gas_cost=407905.13333333336wei = 4.079051333333334e-13 ether
+
+Add consumer and matching gas cost:
+total=69843185, num=75, average_gas_cost=931242.4666666667wei = 9.312424666666667e-13 ether
+
+Engagement:
+total=75, matches=55, engagement_rate=73.33333 % 
+
+Matching time cost:
+total=29, num=75, average_time_cost=0.38666666666666666s
+
+Add provider gas cost:
+total=30159684, num=75, average_gas_cost=402129.12wei = 4.0212912e-13 ether
+
+Add consumer and matching gas cost:
+total=68152109, num=75, average_gas_cost=908694.7866666666wei = 9.086947866666666e-13 ether
+
+Engagement:
+total=75, matches=61, engagement_rate=81.33333 % 
+
+Matching time cost:
+total=41, num=75, average_time_cost=0.5466666666666666s
+
+Add provider gas cost:
+total=30486929, num=75, average_gas_cost=406492.38666666666wei = 4.0649238666666666e-13 ether
+
+Add consumer and matching gas cost:
+total=72233968, num=75, average_gas_cost=963119.5733333334wei = 9.631195733333335e-13 ether
+
+Engagement:
+total=75, matches=62, engagement_rate=82.66667 % 
+
+Matching time cost:
+total=48, num=75, average_time_cost=0.64s
+
+Add provider gas cost:
+total=31223669, num=75, average_gas_cost=416315.58666666667wei = 4.163155866666667e-13 ether
+
+Add consumer and matching gas cost:
+total=73653540, num=75, average_gas_cost=982047.2wei = 9.820472e-13 ether
+
+Engagement:
+total=75, matches=55, engagement_rate=73.33333 % 
+
+Matching time cost:
+total=42, num=75, average_time_cost=0.56s
+
+Add provider gas cost:
+total=30610117, num=75, average_gas_cost=408134.8933333333wei = 4.081348933333333e-13 ether
+
+Add consumer and matching gas cost:
+total=67852404, num=75, average_gas_cost=904698.72wei = 9.0469872e-13 ether
+
+Engagement:
+total=75, matches=67, engagement_rate=89.33333 % 
+
+Matching time cost:
+total=53, num=75, average_time_cost=0.7066666666666667s
+
+Add provider gas cost:
+total=31084571, num=75, average_gas_cost=414460.94666666666wei = 4.144609466666667e-13 ether
+
+Add consumer and matching gas cost:
+total=78471697, num=75, average_gas_cost=1046289.2933333333wei = 1.0462892933333334e-12 ether
+
+Engagement:
+total=75, matches=57, engagement_rate=76.0 % 
+
+Matching time cost:
+total=53, num=75, average_time_cost=0.7066666666666667s
+
+Add provider gas cost:
+total=29979401, num=75, average_gas_cost=399725.3466666667wei = 3.997253466666667e-13 ether
+
+Add consumer and matching gas cost:
+total=69942334, num=75, average_gas_cost=932564.4533333334wei = 9.325644533333335e-13 ether
+
+Engagement:
+total=75, matches=68, engagement_rate=90.66667 % 
+
+Matching time cost:
+total=40, num=75, average_time_cost=0.5333333333333333s
+
+Add provider gas cost:
+total=30440375, num=75, average_gas_cost=405871.6666666667wei = 4.058716666666667e-13 ether
+
+Add consumer and matching gas cost:
+total=77548453, num=75, average_gas_cost=1033979.3733333333wei = 1.0339793733333333e-12 ether
+
+Engagement:
+total=75, matches=66, engagement_rate=88.0 % 
+
+Matching time cost:
+total=48, num=75, average_time_cost=0.64s
+
+Add provider gas cost:
+total=31273558, num=75, average_gas_cost=416980.7733333333wei = 4.169807733333333e-13 ether
+
+Add consumer and matching gas cost:
+total=74961585, num=75, average_gas_cost=999487.8wei = 9.994878e-13 ether
+
+Engagement:
+total=75, matches=65, engagement_rate=86.66667 % 
+
+Matching time cost:
+total=47, num=75, average_time_cost=0.6266666666666667s
+
+Add provider gas cost:
+total=30940320, num=75, average_gas_cost=412537.6wei = 4.1253759999999995e-13 ether
+
+Add consumer and matching gas cost:
+total=75214641, num=75, average_gas_cost=1002861.88wei = 1.00286188e-12 ether

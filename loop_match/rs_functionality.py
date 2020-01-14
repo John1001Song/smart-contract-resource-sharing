@@ -111,7 +111,7 @@ def unix_now():
 
 
 if __name__ == '__main__':
-    num = 100
+    num = 75
     budget_range = 50
     start_base = 3000000000
     start_range = 10000
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     duration_base = int((end_base - start_base) * 3 / 4)
     duration_range = int((end_base - start_base) * 1 / 4)
     deadline_base = 5000000000
-    cities = ["SF", "LA"]
+    cities = ["SF", "NY", "LA", "SH"]
 
     for j in range(10):
         rs = ResourceSharing()
