@@ -111,7 +111,7 @@ def unix_now():
 
 
 if __name__ == '__main__':
-    num = 100
+    num = 75
     budget_range = 50
     start_base = 3000000000
     start_range = 10000
