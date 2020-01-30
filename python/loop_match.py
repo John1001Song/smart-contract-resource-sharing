@@ -112,7 +112,7 @@ def unix_now():
 
 if __name__ == '__main__':
     num = 75
-    budget_range = 50
+    budget_range = 5
     start_base = 3000000000
     start_range = 10000
     end_base = 4000000000
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     duration_range = int((end_base - start_base) * 1 / 4)
     deadline_base = 5000000000
 
-    for j in range(10):
+    for j in range(1):
         rs = ResourceSharing()
         rs.deploy_contract()
 
@@ -158,7 +158,7 @@ if __name__ == '__main__':
         time_total = 0
         for each in matches_from:
             time_total += each[5] - consumer_creation[each[2]]
-        print(f"\nMatching time cost:\ntotal={time_total}, num={num}, average_time_cost={time_total / num}s")
+        print(f"\nMatching time cost:\ntotal={time_total}s, num={num}, average_time_cost={time_total / num}s")
 
         # average gas cost
         print(f"\nAdd provider gas cost:\ntotal={gas_provider}, num={num}, "

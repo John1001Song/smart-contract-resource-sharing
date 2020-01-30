@@ -39,8 +39,8 @@ contract ResourceSharing is Logger {
 
     uint256 public maxMatchInterval;
     bytes32 public head;
-    mapping (bytes32 => Provider) public providerList;
-    mapping (address => Matching[]) public matchings;
+    mapping(bytes32 => Provider) public providerList;
+    mapping(address => Matching[]) public matchings;
 
     event AddProvider(bytes32 id, bytes32 next, string _name, address _addr, uint _target, uint _start, uint _end);
     event Matched(string providerName, address providerAddr, string consumerName, address consumerAddr, uint256 price, uint time, uint start, uint duration);
@@ -108,26 +108,38 @@ contract ResourceSharing is Logger {
 
         // remove expired providers
         removeExpiredProviders();
+        if (head == 0x0) {
+            return false;
+        }
 
-        bytes32 curBytes = head;
-        Provider memory provider;
+        Provider memory current = providerList[head];
+
+        // check head
+        if (isConsumerMatchProvider(current.target, _budget, current.start, current.end, _duration)) {
+            Matching memory m = Matching(current.name, current.addr, _name, msg.sender, current.target, now, current.start, _duration);
+            matchings[current.addr].push(m);
+            matchings[msg.sender].push(m);
+            emit Matched(current.name, current.addr, _name, msg.sender, current.target, now, current.start, _duration);
+
+            head = current.next;
+            return true;
+        }
+
+        // iterate all providers
+        Provider memory next;
         while (true) {
-            if (curBytes == 0x0) {
-                break;
+            if (current.next == 0x0) {
+                return false;
             }
-            provider = providerList[curBytes];
-            if (provider.target < _budget) {
-                curBytes = provider.next;
-                continue;
-            }
-            // check provider has time to process
-            if (provider.start + maxMatchInterval + _duration < provider.end ) {
+            next = providerList[current.next];
+            if (isConsumerMatchProvider(next.target, _budget, next.start, next.end, _duration)) {
                 // matched
-                Matching memory m = Matching(provider.name, provider.addr, _name, msg.sender, _budget, now, provider.start, _duration);
-                matchings[provider.addr].push(m);
+                Matching memory m = Matching(next.name, next.addr, _name, msg.sender, next.target, now, next.start, _duration);
+                matchings[next.addr].push(m);
                 matchings[msg.sender].push(m);
-                emit Matched(provider.name, provider.addr, _name, msg.sender, _budget, now, provider.start, _duration);
+                emit Matched(next.name, next.addr, _name, msg.sender, next.target, now, next.start, _duration);
 
+                /*
                 // increase provider's start
                 provider.start += maxMatchInterval + _duration;
                 providerList[provider.id] = provider;
@@ -137,12 +149,20 @@ contract ResourceSharing is Logger {
                 if (provider.start < provider.end) {
                     addProvider(provider.name, provider.target, provider.start, provider.end);
                 }
+                */
+
+                // TODO: if needed, increase start and insert again
+                delete (providerList[current.next]);
+                current.next = next.next;
                 return true;
-            } else {
-                curBytes = provider.next;
             }
+            current = next;
         }
         return false;
+    }
+
+    function isConsumerMatchProvider(uint proTarget, uint conBudget, uint proStart, uint proEnd, uint conDuration) private returns (bool) {
+        return proTarget <= conBudget && proStart + maxMatchInterval + conDuration < proEnd;
     }
 
     function removeExpiredProviders() public {
