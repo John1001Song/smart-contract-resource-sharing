@@ -9,7 +9,7 @@ contract ResourceSharing is Logger {
         bytes32 next;
 
         string name;
-        string city;
+        string region;
         address addr;
         uint target;
         uint start;
@@ -21,7 +21,7 @@ contract ResourceSharing is Logger {
         bytes32 next;
 
         string name;
-        string city;
+        string region;
         address addr;
         uint budget;
         uint duration;
@@ -33,7 +33,7 @@ contract ResourceSharing is Logger {
         address providerAddr;
         string consumerName;
         address consumerAddr;
-        string city;
+        string region;
         uint256 price;
         uint matchedTime;
         uint start;
@@ -41,12 +41,12 @@ contract ResourceSharing is Logger {
     }
 
     uint256 public maxMatchInterval;
-    mapping (string => bytes32) public headList;
-    mapping (bytes32 => Provider) public providerList;
-    mapping (address => Matching[]) public matchings;
+    mapping(string => bytes32) public headList;
+    mapping(bytes32 => Provider) public providerList;
+    mapping(address => Matching[]) public matchings;
 
-    event AddProvider(bytes32 id, bytes32 next, string _name, string _city, address _addr, uint _target, uint _start, uint _end);
-    event Matched(string providerName, address providerAddr, string consumerName, address consumerAddr, string _city, uint256 price, uint time, uint start, uint duration);
+    event AddProvider(bytes32 id, bytes32 next, string _name, string _region, address _addr, uint _target, uint _start, uint _end);
+    event Matched(string providerName, address providerAddr, string consumerName, address consumerAddr, string _region, uint256 price, uint time, uint start, uint duration);
 
     constructor() public {
         // 100 seconds
@@ -54,18 +54,18 @@ contract ResourceSharing is Logger {
     }
 
     // ALERT: delete this method before deploying contract on the main chain!!!!!
-    function reset(string memory _city) public {
-        headList[_city] = 0x0;
+    function reset(string memory _region) public {
+        headList[_region] = 0x0;
     }
 
-    function addProvider(string memory _name, string memory _city, uint _target, uint _start, uint _end) public returns (bool) {
+    function addProvider(string memory _name, string memory _region, uint _target, uint _start, uint _end) public returns (bool) {
         require(_end > now, "bad end time");
         require(_start < _end, "bad start time");
 
         // remove expired providers
-        removeExpiredProviders(_city);
+        removeExpiredProviders(_region);
 
-        bytes32 head = headList[_city];
+        bytes32 head = headList[_region];
         bytes32 curBytes = head;
         bytes32 nextBytes;
         Provider memory current = providerList[head];
@@ -74,10 +74,10 @@ contract ResourceSharing is Logger {
 
         // Do insertion at head when (1) empty provider list; (2) Or, _end < first end; (3) Or, _end == firest end && _start >= first start
         if (isBetweenCurrentAndNext(head, _start, _end, current.start, current.end)) {
-            Provider memory provider = Provider(id, current.id, _name, _city, msg.sender, _target, _start, _end);
-            headList[_city] = id;
+            Provider memory provider = Provider(id, current.id, _name, _region, msg.sender, _target, _start, _end);
+            headList[_region] = id;
             providerList[id] = provider;
-            emit AddProvider(provider.id, provider.next, provider.name, provider.city, provider.addr, provider.target, provider.start, provider.end);
+            emit AddProvider(provider.id, provider.next, provider.name, provider.region, provider.addr, provider.target, provider.start, provider.end);
             return true;
         }
 
@@ -91,9 +91,9 @@ contract ResourceSharing is Logger {
                 // Do insertion when (1) reached the end of the linked list; (2) Or, insert between current and next
                 current.next = id;
                 providerList[curBytes] = current;
-                Provider memory provider = Provider(id, nextBytes, _name, _city, msg.sender, _target, _start, _end);
+                Provider memory provider = Provider(id, nextBytes, _name, _region, msg.sender, _target, _start, _end);
                 providerList[id] = provider;
-                emit AddProvider(provider.id, provider.next, provider.name, provider.city, provider.addr, provider.target, provider.start, provider.end);
+                emit AddProvider(provider.id, provider.next, provider.name, provider.region, provider.addr, provider.target, provider.start, provider.end);
                 return true;
             }
             curBytes = nextBytes;
@@ -105,52 +105,73 @@ contract ResourceSharing is Logger {
         return _nextBytes == 0x0 || _end < _nextEnd || (_end == _nextEnd && _start <= _nextStart);
     }
 
-    function addConsumer(string memory _name, string memory _city, uint _budget, uint _duration, uint _deadline) public returns (bool) {
+    function addConsumer(string memory _name, string memory _region, uint _budget, uint _duration, uint _deadline) public returns (bool) {
         require(now + _duration + maxMatchInterval < _deadline, "not enough time to consume resource");
 
         // remove expired providers
-        removeExpiredProviders(_city);
+        removeExpiredProviders(_region);
 
-        bytes32 head = headList[_city];
-        bytes32 curBytes = head;
-        Provider memory provider;
+        bytes32 head = headList[_region];
+        if (head == 0x0) {
+            // TODO: if no matching in current region, search adjacent regions
+            return false;
+        }
+
+        // check head
+        Provider memory current = providerList[head];
+        if (isConsumerMatchProvider(current.target, _budget, current.start, current.end, _duration)) {
+            Matching memory m = Matching(current.name, current.addr, _name, msg.sender, _region, current.target, now, current.start, _duration);
+            matchings[current.addr].push(m);
+            matchings[msg.sender].push(m);
+            emit Matched(current.name, current.addr, _name, msg.sender, _region, current.target, now, current.start, _duration);
+
+            headList[_region] = current.next;
+            return true;
+        }
+
+        // iterate all providers
+        Provider memory next;
         while (true) {
-            if (curBytes == 0x0) {
-                break;
+            if (current.next == 0x0) {
+                // TODO: if no matching in current region, search adjacent regions
+                return false;
             }
-            provider = providerList[curBytes];
-            logProvider("add consumer, current=", provider.name, providerList[provider.next].name, provider.start, provider.end);
-            if (provider.target < _budget) {
-                curBytes = provider.next;
-                continue;
-            }
-            if (provider.start + maxMatchInterval + _duration < provider.end ) {
+            next = providerList[current.next];
+            if (isConsumerMatchProvider(next.target, _budget, next.start, next.end, _duration)) {
                 // matched
-                Matching memory m = Matching(provider.name, provider.addr, _name, msg.sender, _city, _budget, now, provider.start, _duration);
-                matchings[provider.addr].push(m);
+                Matching memory m = Matching(next.name, next.addr, _name, msg.sender, _region, current.target, now, next.start, _duration);
+                matchings[next.addr].push(m);
                 matchings[msg.sender].push(m);
-                emit Matched(provider.name, provider.addr, _name, msg.sender, _city, _budget, now, provider.start, _duration);
+                emit Matched(next.name, next.addr, _name, msg.sender, _region, current.target, now, next.start, _duration);
 
+                /*
                 // increase provider's start
-                // TODO: if new start > end, remove provider
-                provider.start += maxMatchInterval + _duration;
-                providerList[provider.id] = provider;
+                next.start += maxMatchInterval + _duration;
+                providerList[next.id] = provider;
 
-                // TODO: do deletion and insertion here to save gas
-                removeProvider(_city, provider.id);
-                if (provider.start < provider.end) {
-                    addProvider(provider.name, provider.city, provider.target, provider.start, provider.end);
+                removeProvider(_region, next.id);
+                if (next.start < next.end) {
+                    addProvider(next.name, next.region, next.target, next.start, next.end);
                 }
+                */
+
+                // TODO: if needed, increase start and insert again
+                delete (providerList[current.next]);
+                current.next = next.next;
                 return true;
             } else {
-                curBytes = provider.next;
+                current = next;
             }
         }
         return false;
     }
 
-    function removeExpiredProviders(string memory _city) public {
-        bytes32 head = headList[_city];
+    function isConsumerMatchProvider(uint proTarget, uint conBudget, uint proStart, uint proEnd, uint conDuration) private returns (bool) {
+        return proTarget <= conBudget && proStart + maxMatchInterval + conDuration < proEnd;
+    }
+
+    function removeExpiredProviders(string memory _region) public {
+        bytes32 head = headList[_region];
         bytes32 curBytes = head;
         Provider memory current = providerList[head];
 
@@ -161,11 +182,11 @@ contract ResourceSharing is Logger {
             }
             curBytes = current.next;
         }
-        headList[_city] = curBytes;
+        headList[_region] = curBytes;
     }
 
-    function removeProvider(string memory _city, bytes32 _id) private {
-        bytes32 head = headList[_city];
+    function removeProvider(string memory _region, bytes32 _id) private {
+        bytes32 head = headList[_region];
         if (head == 0x0) {
             return;
         }
@@ -174,7 +195,7 @@ contract ResourceSharing is Logger {
         Provider memory target = providerList[_id];
 
         if (head == _id) {
-            headList[_city] = current.next;
+            headList[_region] = current.next;
             return;
         }
 

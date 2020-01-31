@@ -46,6 +46,7 @@ class ResourceSharing:
             try:
                 return self.contract.functions.addProvider(name, city, target, start, end).transact()
             except Exception as e:
+                print(f"Error in add_provider(): {e}")
                 if retry == 9:
                     print(f"Error in add_provider(): {e}")
                 continue
@@ -56,6 +57,7 @@ class ResourceSharing:
             try:
                 return self.contract.functions.addConsumer(name, city, budget, duration, deadline).transact()
             except Exception as e:
+                print(f"Error in add_provider(): {e}")
                 if retry == 9:
                     print(f"Error in add_provider(): {e}")
                 continue
@@ -111,8 +113,8 @@ def unix_now():
 
 
 if __name__ == '__main__':
-    num = 75
-    budget_range = 50
+    num = 1000
+    budget_range = 5
     start_base = 3000000000
     start_range = 10000
     end_base = 4000000000
@@ -120,9 +122,9 @@ if __name__ == '__main__':
     duration_base = int((end_base - start_base) * 3 / 4)
     duration_range = int((end_base - start_base) * 1 / 4)
     deadline_base = 5000000000
-    cities = ["SF", "NY", "LA", "SH"]
+    cities = ["SF"]
 
-    for j in range(10):
+    for j in range(1):
         rs = ResourceSharing()
         rs.deploy_contract()
 
@@ -130,23 +132,21 @@ if __name__ == '__main__':
         gas_provider = 0
         gas_consumer = 0
 
-        # add providers
-        rs.set_address(rs.accounts[0])
         for i in range(num):
             rand = random.random()
+            rs.set_address(rs.accounts[0])
+
+            # add providers
             city = cities[int(random.random() * len(cities))]
             tx = rs.add_provider(f"provider #{i}", city, int(budget_range * rand) + 1,
                                  int(start_base + start_range * rand),
                                  int(end_base + end_range * rand))
             gas_provider += rs.get_transaction(tx)['gas']
 
-        rs.set_address(rs.accounts[1])
-        # add consumers
-        for i in range(num):
-            rand = random.random()
+            # add consumer
+            rs.set_address(rs.accounts[1])
             name = f"consumer #{i}"
             consumer_creation[name] = unix_now()
-            city = cities[int(random.random() * len(cities))]
             tx = rs.add_consumer(name, city, int(budget_range * rand) + 1, int(duration_base + duration_range * rand),
                                  deadline_base)
             gas_consumer += rs.get_transaction(tx)['gas']
@@ -162,7 +162,7 @@ if __name__ == '__main__':
         time_total = 0
         for each in matches_from:
             time_total += each[6] - consumer_creation[each[2]]
-        print(f"\nMatching time cost:\ntotal={time_total}, num={num}, average_time_cost={time_total / num}s")
+        print(f"\nMatching time cost:\ntotal={time_total}s, num={num}, average_time_cost={time_total / num}s")
 
         # average gas cost
         print(f"\nAdd provider gas cost:\ntotal={gas_provider}, num={num}, "
