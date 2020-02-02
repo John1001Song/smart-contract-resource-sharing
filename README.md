@@ -33,3 +33,8 @@ Assume both consumers and providers are ready, and always the number of consumer
 3. Gas/Eth Consumption
 Graph the average gas or Eth consumption of each engagement when user size increases from 10 to 100.
 
+# Code Design
+## Remove expired providers
+1. Check expired providers in mode "min_latency".
+2. If a provider is expired, delete it in providerMap, but keep all provider indices.
+3. When iterating provider indices, remove a provider index if its end is 0(which means that provider is expired). 

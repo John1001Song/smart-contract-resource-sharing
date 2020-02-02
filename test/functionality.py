@@ -15,7 +15,6 @@ end = 9999999999
 class Provider:
     def __init__(self):
         self.id = None
-        self.next = None
         self.name = ""
         self.region = ""
         self.address = ""
@@ -27,14 +26,26 @@ class Provider:
     def new(eth_provider):
         p = Provider()
         p.id = eth_provider[0]
-        p.next = eth_provider[1]
-        p.name = eth_provider[2]
-        p.region = eth_provider[3]
-        p.address = eth_provider[4]
-        p.target = eth_provider[5]
-        p.start = eth_provider[6]
-        p.end = eth_provider[7]
+        p.name = eth_provider[1]
+        p.region = eth_provider[2]
+        p.address = eth_provider[3]
+        p.target = eth_provider[4]
+        p.start = eth_provider[5]
+        p.end = eth_provider[6]
         return p
+
+
+class ProviderIndex:
+    def __init__(self):
+        self.id = None
+        self.next = None
+
+    @staticmethod
+    def new(eth_index):
+        v = ProviderIndex()
+        v.id = eth_index[0]
+        v.next = eth_index[1]
+        return v
 
 
 class Consumer:
@@ -112,11 +123,11 @@ class TestResourceSharing(unittest.TestCase):
     def test_bad_provider(self):
         rs = self.deploy()
         rs.functions.addProvider("hello", "SF", 1, 1, 1)
-        head = rs.functions.headList("SF").call()
+        head = rs.functions.headMap("SF").call()
         self.assertTrue(self.is_byte32_empty(head), "bad end time, head should be empty")
 
         rs.functions.addProvider("hello", "SF", 1, 9999999999, 7999999999)
-        head = rs.functions.headList("SF").call()
+        head = rs.functions.headMap("SF").call()
         self.assertTrue(self.is_byte32_empty(head), "bad start time, head should be empty")
 
     def test_add_providers(self):
@@ -126,37 +137,42 @@ class TestResourceSharing(unittest.TestCase):
         rs.functions.addProvider("test", "SF", 1, start, end).transact()
         rs.functions.addProvider("provider4", "SF", 4, start, end + 1).transact()
 
-        cur_bytes = rs.functions.headList("SF").call()
+        key = "SF||min_latency"
+        cur_bytes = rs.functions.headMap(key).call()
         self.assertFalse(self.is_byte32_empty(cur_bytes), "head should not be empty")
 
-        current = Provider.new(rs.functions.providerList(cur_bytes).call())
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, cur_bytes).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
         self.assertEqual("test", current.name)
-        self.assertEqual("SF", current.region, )
+        self.assertEqual("SF", current.region)
         self.assertEqual(1, current.target)
         self.assertEqual(start, current.start)
         self.assertEqual(end, current.end)
 
-        current = Provider.new(rs.functions.providerList(current.next).call())
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
         self.assertEqual("world", current.name)
         self.assertEqual("SF", current.region)
         self.assertEqual(2, current.target)
         self.assertEqual(start, current.start)
         self.assertEqual(end, current.end)
 
-        current = Provider.new(rs.functions.providerList(current.next).call())
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
         self.assertEqual("hello", current.name)
         self.assertEqual("SF", current.region)
         self.assertEqual(3, current.target)
         self.assertEqual(start + 1, current.start)
         self.assertEqual(end, current.end)
 
-        current = Provider.new(rs.functions.providerList(current.next).call())
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
         self.assertEqual("provider4", current.name)
-        self.assertEqual("SF", current.region, )
+        self.assertEqual("SF", current.region)
         self.assertEqual(4, current.target)
         self.assertEqual(start, current.start)
         self.assertEqual(end + 1, current.end)
-        self.assertTrue(self.is_byte32_empty(current.next))
+        self.assertTrue(self.is_byte32_empty(index.next))
 
     def test_add_provider_different_regions(self):
         rs = self.deploy()
@@ -164,34 +180,39 @@ class TestResourceSharing(unittest.TestCase):
         rs.functions.addProvider("NYC1", "NYC", 2, start, end).transact()
         rs.functions.addProvider("NYC2", "NYC", 1, start, end).transact()
 
-        cur_bytes = rs.functions.headList("SF").call()
+        key = "SF||min_latency"
+        cur_bytes = rs.functions.headMap(key).call()
         self.assertFalse(self.is_byte32_empty(cur_bytes), "head should not be empty")
 
-        current = Provider.new(rs.functions.providerList(cur_bytes).call())
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, cur_bytes).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
         self.assertEqual("hello", current.name)
         self.assertEqual("SF", current.region)
         self.assertEqual(3, current.target)
         self.assertEqual(start, current.start)
         self.assertEqual(end, current.end)
-        self.assertTrue(self.is_byte32_empty(current.next))
+        self.assertTrue(self.is_byte32_empty(index.next))
 
-        cur_bytes = rs.functions.headList("NYC").call()
+        key = "NYC||min_latency"
+        cur_bytes = rs.functions.headMap(key).call()
         self.assertFalse(self.is_byte32_empty(cur_bytes), "head should not be empty")
 
-        current = Provider.new(rs.functions.providerList(cur_bytes).call())
-        self.assertEqual("NYC2", current.name, )
-        self.assertEqual("NYC", current.region, )
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, cur_bytes).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
+        self.assertEqual("NYC2", current.name)
+        self.assertEqual("NYC", current.region)
         self.assertEqual(1, current.target)
         self.assertEqual(start, current.start)
         self.assertEqual(end, current.end)
 
-        current = Provider.new(rs.functions.providerList(current.next).call())
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
         self.assertEqual("NYC1", current.name)
         self.assertEqual("NYC", current.region)
         self.assertEqual(2, current.target)
         self.assertEqual(start, current.start)
         self.assertEqual(end, current.end)
-        self.assertTrue(self.is_byte32_empty(current.next))
+        self.assertTrue(self.is_byte32_empty(index.next))
 
     def test_remove_expired_provider(self):
         rs = self.deploy()
@@ -200,28 +221,31 @@ class TestResourceSharing(unittest.TestCase):
         now = int(datetime.now().timestamp())
         rs.functions.addProvider("remove1", "SF", 1, now, now + 1).transact()
 
-        cur_bytes = rs.functions.headList("SF").call()
-        current = Provider.new(rs.functions.providerList(cur_bytes).call())
+        key = "SF||min_latency"
+        cur_bytes = rs.functions.headMap(key).call()
+        current = Provider.new(rs.functions.providerMap(cur_bytes).call())
         self.assertEqual("remove1", current.name)
         self.assertEqual(1, current.target)
         self.assertEqual(now, current.start)
         self.assertEqual(now + 1, current.end)
 
         time.sleep(2)
-        rs.functions.removeExpiredProviders("SF").transact()
+        rs.functions.removeExpiredProviders(key).transact()
 
-        cur_bytes = rs.functions.headList("SF").call()
-        current = Provider.new(rs.functions.providerList(cur_bytes).call())
+        cur_bytes = rs.functions.headMap(key).call()
+        current = Provider.new(rs.functions.providerMap(cur_bytes).call())
         self.assertEqual("test", current.name)
 
     def test_bad_consumer(self):
         rs = self.deploy()
         self.set_address(self.accounts[0])
         rs.functions.addProvider("test", "SF", 1, start, end).transact()
-        cur_bytes = rs.functions.headList("SF").call()
+
+        key = "SF||min_latency"
+        cur_bytes = rs.functions.headMap(key).call()
         self.assertFalse(self.is_byte32_empty(cur_bytes), "head should not be empty")
 
-        rs.functions.addConsumer("hello", "SF", 1, 1000, 1)
+        rs.functions.addConsumer("min_latency", "hello", "SF", 1, 1000, 1)
         try:
             rs.functions.matchings(self.accounts[0], 0).call()
 
@@ -234,27 +258,31 @@ class TestResourceSharing(unittest.TestCase):
         self.set_address(self.accounts[0])
 
         region = "SF"
+        key = region + "||min_latency"
         rs.functions.addProvider("hello", region, 3, start + 1, end).transact()
         rs.functions.addProvider("world", region, 2, start, end).transact()
         rs.functions.addProvider("test", region, 1, start, end).transact()
         rs.functions.addProvider("provider4", region, 4, start, end + 1).transact()
 
         self.set_address(self.accounts[1])
-        rs.functions.addConsumer("consumer1", region, 2, 100, end).transact()
+        rs.functions.addConsumer("min_latency", "consumer1", region, 2, 100, end).transact()
 
-        cur_bytes = rs.functions.headList(region).call()
-        current = Provider.new(rs.functions.providerList(cur_bytes).call())
+        cur_bytes = rs.functions.headMap(key).call()
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, cur_bytes).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
         self.assertEqual("world", current.name)
         self.assertEqual(2, current.target)
 
-        current = Provider.new(rs.functions.providerList(current.next).call())
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
         self.assertEqual("hello", current.name)
         self.assertEqual(3, current.target)
 
-        current = Provider.new(rs.functions.providerList(current.next).call())
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
         self.assertEqual("provider4", current.name)
         self.assertEqual(4, current.target)
-        self.assertTrue(self.is_byte32_empty(current.next))
+        self.assertTrue(self.is_byte32_empty(index.next))
 
         # match
         match = Matching.new(rs.functions.matchings(self.accounts[0], 0).call())

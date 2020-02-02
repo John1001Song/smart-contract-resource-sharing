@@ -1,2 +1,3 @@
 1. 增加storage provider
 2. 支持多种匹配算法
+3. add consumer在当前区域没有匹配时，查找相邻区域
