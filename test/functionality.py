@@ -232,6 +232,9 @@ class TestResourceSharing(unittest.TestCase):
         time.sleep(2)
         rs.functions.removeExpiredProviders(key).transact()
 
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, cur_bytes).call())
+        self.assertTrue(self.is_byte32_empty(index.next))
+
         cur_bytes = rs.functions.headMap(key).call()
         current = Provider.new(rs.functions.providerMap(cur_bytes).call())
         self.assertEqual("test", current.name)

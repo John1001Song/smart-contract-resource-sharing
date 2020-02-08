@@ -72,6 +72,7 @@ contract ResourceSharing is Logger {
 
         // add indices
         addProviderIndexModeMinLatency(id, _region, _start, _end);
+        // addProviderIndexModeMinCost(id, _region, _start, _end);
 
         // add provider
         Provider memory provider = Provider(id, _name, _region, msg.sender, _target, _start, _end);
@@ -84,6 +85,18 @@ contract ResourceSharing is Logger {
     function getProviderKey(string memory _region, string memory _mode) private returns (string memory) {
         return stringConcat(_region, "||", _mode);
     }
+
+    function addConsumer(string memory _mode, string memory _name, string memory _region, uint _budget, uint _duration, uint _deadline) public returns (bool) {
+        require(now + _duration + maxMatchInterval < _deadline, "not enough time to consume resource");
+
+        if (keccak256(bytes(_mode)) != keccak256(bytes("min_latency")) &&
+        keccak256(bytes(_mode)) == keccak256(bytes("min_cost"))) {
+            return false;
+        }
+        return addConsumerByMode(_mode, _name, _region, _budget, _duration);
+    }
+
+    /////////////////////////////////////////////////////////// MODE MIN_LATENCY ///////////////////////////////////////////////////////////
 
     function addProviderIndexModeMinLatency(bytes32 id, string memory _region, uint _start, uint _end) public returns (bool) {
         string memory key = getProviderKey(_region, "min_latency");
@@ -119,7 +132,7 @@ contract ResourceSharing is Logger {
         return false;
     }
 
-    // Only useful for mode MIN_LATENCY
+    // Only used for mode MIN_LATENCY
     function removeExpiredProviders(string memory _key) public {
         bytes32 curBytes = headMap[_key];
         Provider memory current;
@@ -130,31 +143,21 @@ contract ResourceSharing is Logger {
             if (curBytes == 0x0 || current.end > now) {
                 break;
             }
-            delete (providerMap[curBytes]);
             index = providerIndexMap[_key][curBytes];
             curBytes = index.next;
+            delete (providerMap[index.id]);
+            delete (providerIndexMap[_key][index.id]);
         }
         headMap[_key] = curBytes;
     }
 
-    // Only useful for mode MIN_LATENCY
+    // Only used for mode MIN_LATENCY
     function isBetweenCurrentAndNext(bytes32 _nextBytes, uint _start, uint _end, uint _nextStart, uint _nextEnd) private returns (bool) {
         return _nextBytes == 0x0 || _end < _nextEnd || (_end == _nextEnd && _start <= _nextStart);
     }
 
-    function addConsumer(string memory _mode, string memory _name, string memory _region, uint _budget, uint _duration, uint _deadline) public returns (bool) {
-        require(now + _duration + maxMatchInterval < _deadline, "not enough time to consume resource");
-
-        if (keccak256(bytes(_mode)) == keccak256(bytes("min_latency"))) {
-            return addConsumerModeMinLatency(_name, _region, _budget, _duration);
-        } else {
-            return false;
-        }
-        return false;
-    }
-
-    function addConsumerModeMinLatency(string memory _name, string memory _region, uint _budget, uint _duration) public returns (bool) {
-        string memory key = getProviderKey(_region, "min_latency");
+    function addConsumerByMode(string memory mode, string memory _name, string memory _region, uint _budget, uint _duration) public returns (bool) {
+        string memory key = getProviderKey(_region, mode);
 
         // remove expired providers
         removeExpiredProviders(key);
@@ -207,6 +210,65 @@ contract ResourceSharing is Logger {
         return false;
     }
 
+
+    /////////////////////////////////////////////////////////// MODE MIN_COST ///////////////////////////////////////////////////////////
+
+    function addProviderIndexModeMinCost(bytes32 id, string memory _region, uint _target, uint _start, uint _end) public returns (bool) {
+        string memory key = getProviderKey(_region, "min_cost");
+
+        Provider memory current = providerMap[headMap[key]];
+        Provider memory next;
+        ProviderIndex memory curIndex = providerIndexMap[key][headMap[key]];
+        ProviderIndex memory newIndex;
+
+        // get first valid provider index, remove expired
+        while (true) {
+            if (current.id != 0x0 || curIndex.next == 0x0) {
+                break;
+            }
+            headMap[key] = curIndex.next;
+            current = providerMap[curIndex.next];
+            delete (providerIndexMap[key][curIndex.id]);
+            curIndex = providerIndexMap[key][curIndex.next];
+        }
+        // check first
+        if (isBetweenCurrentAndNextModeMinCost(headMap[key], _target, current.target, _start, _end, current.start, current.end)) {
+            newIndex = ProviderIndex(id, current.id);
+            headMap[key] = id;
+            providerIndexMap[key][id] = newIndex;
+            return true;
+        }
+
+        // iterate
+        while (true) {
+            curIndex = providerIndexMap[key][current.id];
+            next = providerMap[curIndex.next];
+            // check valid and remove expired
+            if (next.id == 0x0 && curIndex.next != 0x0) {
+                newIndex = providerIndexMap[key][next.id];
+                delete (providerIndexMap[key][newIndex.id]);
+                curIndex.next = newIndex.next;
+                providerIndexMap[key][curIndex.id] = curIndex;
+                current = providerMap[curIndex.next];
+                continue;
+            }
+            if (isBetweenCurrentAndNextModeMinCost(next.id, _target, next.target, _start, _end, next.start, next.end)) {
+                newIndex = ProviderIndex(id, curIndex.next);
+                providerIndexMap[key][id] = newIndex;
+                providerIndexMap[key][current.id].next = newIndex.id;
+                return true;
+            }
+            current = providerMap[curIndex.next];
+        }
+        return false;
+    }
+
+    function isBetweenCurrentAndNextModeMinCost(bytes32 _nextBytes, uint _target, uint _nextTarget, uint _start, uint _end, uint _nextStart, uint _nextEnd) private returns (bool) {
+        return _nextBytes == 0x0 || _target < _nextTarget || _end < _nextEnd || (_end == _nextEnd && _start <= _nextStart);
+    }
+
+    /////////////////////////////////////////////////////////// COMMON ///////////////////////////////////////////////////////////
+
     function isConsumerMatchProvider(uint proTarget, uint conBudget, uint proStart, uint proEnd, uint conDuration) private returns (bool) {
         return proTarget <= conBudget && proStart + maxMatchInterval + conDuration < proEnd;
     }
@@ -216,6 +278,7 @@ contract ResourceSharing is Logger {
 
         // delete indices of all modes
         delete (providerIndexMap[getProviderKey(_region, "min_latency")][_id]);
+        delete (providerIndexMap[getProviderKey(_region, "min_cost")][_id]);
     }
 
     function stringConcat(string memory a, string memory b, string memory c) internal pure returns (string memory) {
