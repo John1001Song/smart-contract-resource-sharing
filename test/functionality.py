@@ -174,6 +174,41 @@ class TestResourceSharing(unittest.TestCase):
         self.assertEqual(end + 1, current.end)
         self.assertTrue(self.is_byte32_empty(index.next))
 
+        # test indices of mode MIN_COST
+        key = "SF||min_cost"
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, cur_bytes).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
+        self.assertEqual("test", current.name)
+        self.assertEqual("SF", current.region)
+        self.assertEqual(1, current.target)
+        self.assertEqual(start, current.start)
+        self.assertEqual(end, current.end)
+
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
+        self.assertEqual("world", current.name)
+        self.assertEqual("SF", current.region)
+        self.assertEqual(2, current.target)
+        self.assertEqual(start, current.start)
+        self.assertEqual(end, current.end)
+
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
+        self.assertEqual("hello", current.name)
+        self.assertEqual("SF", current.region)
+        self.assertEqual(3, current.target)
+        self.assertEqual(start + 1, current.start)
+        self.assertEqual(end, current.end)
+
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
+        self.assertEqual("provider4", current.name)
+        self.assertEqual("SF", current.region)
+        self.assertEqual(4, current.target)
+        self.assertEqual(start, current.start)
+        self.assertEqual(end + 1, current.end)
+        self.assertTrue(self.is_byte32_empty(index.next))
+
     def test_add_provider_different_regions(self):
         rs = self.deploy()
         rs.functions.addProvider("hello", "SF", 3, start, end).transact()
@@ -238,6 +273,28 @@ class TestResourceSharing(unittest.TestCase):
         cur_bytes = rs.functions.headMap(key).call()
         current = Provider.new(rs.functions.providerMap(cur_bytes).call())
         self.assertEqual("test", current.name)
+
+        # remove MIN_COST index after adding a new provider
+        key = "SF||min_cost"
+        rs.functions.addProvider("new", "SF", 2, start, end).transact()
+        cur_bytes = rs.functions.headMap(key).call()
+
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, cur_bytes).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
+        self.assertEqual("test", current.name)
+        self.assertEqual("SF", current.region)
+        self.assertEqual(1, current.target)
+        self.assertEqual(start, current.start)
+        self.assertEqual(end, current.end)
+
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
+        current = Provider.new(rs.functions.providerMap(index.id).call())
+        self.assertEqual("new", current.name)
+        self.assertEqual("SF", current.region)
+        self.assertEqual(2, current.target)
+        self.assertEqual(start, current.start)
+        self.assertEqual(end, current.end)
+        self.assertTrue(self.is_byte32_empty(index.next))
 
     def test_bad_consumer(self):
         rs = self.deploy()

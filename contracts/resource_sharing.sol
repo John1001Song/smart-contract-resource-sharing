@@ -72,7 +72,7 @@ contract ResourceSharing is Logger {
 
         // add indices
         addProviderIndexModeMinLatency(id, _region, _start, _end);
-        // addProviderIndexModeMinCost(id, _region, _start, _end);
+        addProviderIndexModeMinCost(id, _region, _target, _start, _end);
 
         // add provider
         Provider memory provider = Provider(id, _name, _region, msg.sender, _target, _start, _end);
@@ -264,7 +264,13 @@ contract ResourceSharing is Logger {
     }
 
     function isBetweenCurrentAndNextModeMinCost(bytes32 _nextBytes, uint _target, uint _nextTarget, uint _start, uint _end, uint _nextStart, uint _nextEnd) private returns (bool) {
-        return _nextBytes == 0x0 || _target < _nextTarget || _end < _nextEnd || (_end == _nextEnd && _start <= _nextStart);
+        if (_nextBytes == 0x0) {
+            return true;
+        }
+        if (_target > _nextTarget) {
+            return false;
+        }
+        return _end < _nextEnd || (_end == _nextEnd && _start <= _nextStart);
     }
 
     /////////////////////////////////////////////////////////// COMMON ///////////////////////////////////////////////////////////
