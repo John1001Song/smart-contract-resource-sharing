@@ -31,30 +31,43 @@ contract ResourceSharing is Logger {
         uint deadline;
     }
 
+    struct Storager {
+        bytes32 id;
+
+        string name;
+        string region;
+        address addr;
+    }
+
     struct Matching {
-        string providerName;
-        address providerAddr;
-        string consumerName;
-        address consumerAddr;
+        string matcher1Name;
+        address matcher1Addr;
+        string matcher2Name;
+        address matcher2Addr;
         string region;
         uint256 price;
         uint matchedTime;
         uint start;
         uint duration;
+        uint matchType; // 1: provider+consumer; 2: provider+storager;
     }
 
+    // const
     uint256 public maxMatchInterval;
-    bytes32 public head;
     string[] regionList;
 
+    // provider, consumer
     mapping(string => bytes32) public headMap; // key="city||mode"
     mapping(address => Matching[]) public matchings;
     mapping(bytes32 => Provider) public providerMap;
     mapping(string => mapping(bytes32 => ProviderIndex)) public providerIndexMap; // key="city||mode"
 
+    // storager
+    mapping(string => bytes32) public storageHeadMap;
+    mapping(bytes32 => Storager) public storagerMap;
 
     event AddProvider(bytes32 id, string _name, string _region, address _addr, uint _target, uint _start, uint _end);
-    event Matched(string providerName, address providerAddr, string consumerName, address consumerAddr, string _region, uint256 price, uint time);
+    event Matched(string matcher1Name, address matcher1Addr, string matcher2Name, address matcher2Addr, string _region, uint256 price, uint time, uint matchType);
 
     constructor() public {
         // 100 seconds
@@ -174,10 +187,10 @@ contract ResourceSharing is Logger {
         ProviderIndex memory nextIndex;
 
         if (isConsumerMatchProvider(nextProvider.target, _budget, nextProvider.start, nextProvider.end, _duration)) {
-            Matching memory m = Matching(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, nextProvider.start, _duration);
+            Matching memory m = Matching(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, nextProvider.start, _duration, 1);
             matchings[nextProvider.addr].push(m);
             matchings[msg.sender].push(m);
-            emit Matched(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now);
+            emit Matched(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, 1);
 
             headMap[key] = curIndex.next;
             removeProviderIndices(_region, nextProvider.id);
@@ -195,10 +208,10 @@ contract ResourceSharing is Logger {
                 nextIndex = providerIndexMap[key][curIndex.next];
             }
             if (isConsumerMatchProvider(nextProvider.target, _budget, nextProvider.start, nextProvider.end, _duration)) {
-                Matching memory m = Matching(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, nextProvider.start, _duration);
+                Matching memory m = Matching(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, nextProvider.start, _duration, 1);
                 matchings[nextProvider.addr].push(m);
                 matchings[msg.sender].push(m);
-                emit Matched(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now);
+                emit Matched(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, 1);
 
                 providerIndexMap[key][curIndex.id].next = nextIndex.next;
                 removeProviderIndices(_region, nextIndex.id);
@@ -272,6 +285,10 @@ contract ResourceSharing is Logger {
         }
         return _end < _nextEnd || (_end == _nextEnd && _start <= _nextStart);
     }
+
+    /////////////////////////////////////////////////////////// STORAGER ///////////////////////////////////////////////////////////
+
+
 
     /////////////////////////////////////////////////////////// COMMON ///////////////////////////////////////////////////////////
 
