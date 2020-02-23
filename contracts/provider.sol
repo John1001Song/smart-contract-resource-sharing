@@ -28,10 +28,10 @@ contract ProviderLib {
         // remove expired providers
         removeExpiredProviders(headMap, providerMap, providerIndexMap, key);
 
-        ProviderLib.Provider memory current = providerMap[headMap[key]];
-        ProviderLib.Provider memory next;
-        ProviderLib.ProviderIndex memory curIndex;
-        ProviderLib.ProviderIndex memory newIndex;
+        Provider memory current = providerMap[headMap[key]];
+        Provider memory next;
+        ProviderIndex memory curIndex;
+        ProviderIndex memory newIndex;
 
         // check head
         if (isBetweenCurrentAndNext(headMap[key], _start, _end, current.start, current.end)) {
@@ -62,8 +62,8 @@ contract ProviderLib {
         mapping(string => mapping(bytes32 => ProviderIndex)) storage providerIndexMap,
         string memory _key) internal {
         bytes32 curBytes = headMap[_key];
-        ProviderLib.Provider memory current;
-        ProviderLib.ProviderIndex memory index;
+        Provider memory current;
+        ProviderIndex memory index;
 
         while (true) {
             current = providerMap[curBytes];

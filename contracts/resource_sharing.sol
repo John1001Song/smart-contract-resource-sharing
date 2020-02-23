@@ -1,8 +1,9 @@
 pragma solidity 0.5.12;
 
 import "./provider.sol";
+import "./storager.sol";
 
-contract ResourceSharing is ProviderLib {
+contract ResourceSharing is ProviderLib, StorageLib {
 
     struct Consumer {
         bytes32 id;
@@ -16,14 +17,6 @@ contract ResourceSharing is ProviderLib {
         uint deadline;
     }
 
-    struct Storager {
-        bytes32 id;
-
-        string name;
-        string region;
-        address addr;
-    }
-
     struct Matching {
         string matcher1Name;
         address matcher1Addr;
@@ -34,7 +27,8 @@ contract ResourceSharing is ProviderLib {
         uint matchedTime;
         uint start;
         uint duration;
-        uint matchType; // 1: provider+consumer; 2: provider+storager;
+        address[] storagers;
+        // uint matchType; // 1: provider+consumer; 2: provider+storager;
     }
 
     // const
@@ -49,10 +43,10 @@ contract ResourceSharing is ProviderLib {
 
     // storager
     mapping(string => bytes32) public storageHeadMap;
-    mapping(bytes32 => Storager) public storagerMap;
+    mapping(bytes32 => StorageLib.Storager) public storagerMap;
 
     event AddProvider(bytes32 id, string _name, string _region, address _addr, uint _target, uint _start, uint _end);
-    event Matched(string matcher1Name, address matcher1Addr, string matcher2Name, address matcher2Addr, string _region, uint256 price, uint time, uint matchType);
+    event Matched(string matcher1Name, address matcher1Addr, string matcher2Name, address matcher2Addr, string _region, uint256 price, uint time, address[] storagers);
 
     constructor() public {
         // 100 seconds
@@ -107,12 +101,14 @@ contract ResourceSharing is ProviderLib {
         ProviderLib.Provider memory nextProvider = providerMap[headMap[key]];
         ProviderLib.ProviderIndex memory curIndex = providerIndexMap[key][nextProvider.id];
         ProviderLib.ProviderIndex memory nextIndex;
+        address[] memory stList = new address[](1);
 
         if (isConsumerMatchProvider(maxMatchInterval, nextProvider.target, _budget, nextProvider.start, nextProvider.end, _duration)) {
-            Matching memory m = Matching(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, nextProvider.start, _duration, 1);
+            stList[0] = nextProvider.addr;
+            Matching memory m = Matching(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, nextProvider.start, _duration, stList);
             matchings[nextProvider.addr].push(m);
             matchings[msg.sender].push(m);
-            emit Matched(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, 1);
+            emit Matched(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, stList);
 
             headMap[key] = curIndex.next;
             removeProviderIndices(providerMap, providerIndexMap, _region, nextProvider.id);
@@ -126,10 +122,11 @@ contract ResourceSharing is ProviderLib {
             nextProvider = providerMap[curIndex.next];
             nextIndex = providerIndexMap[key][curIndex.next];
             if (curIndex.next == 0x0 || isConsumerMatchProvider(maxMatchInterval, nextProvider.target, _budget, nextProvider.start, nextProvider.end, _duration)) {
-                Matching memory m = Matching(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, nextProvider.start, _duration, 1);
+                stList[0] = nextProvider.addr;
+                Matching memory m = Matching(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, nextProvider.start, _duration, stList);
                 matchings[nextProvider.addr].push(m);
                 matchings[msg.sender].push(m);
-                emit Matched(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, 1);
+                emit Matched(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, stList);
 
                 providerIndexMap[key][curIndex.id].next = nextIndex.next;
                 removeProviderIndices(providerMap, providerIndexMap, _region, nextIndex.id);
@@ -141,11 +138,9 @@ contract ResourceSharing is ProviderLib {
         return false;
     }
 
-
-
-
-    /////////////////////////////////////////////////////////// STORAGER ///////////////////////////////////////////////////////////
-
+    function addStorager(string memory _name, string memory _region, uint _size) public returns (bool) {
+        return StorageLib.addStorager(storageHeadMap, storagerMap, _name, _region, _size);
+    }
 
 }
 
