@@ -51,11 +51,11 @@ class ResourceSharing:
                     print(f"Error in add_provider(): {e}")
                 continue
 
-    def add_consumer(self, name, city, budget, duration, deadline):
+    def add_consumer(self, name, city, budget, duration, deadline, mode="min_latency"):
         print(f"add consumer, name={name}, city={city}, budget={budget}, duration={duration}, deadline={deadline}")
         for retry in range(10):
             try:
-                return self.contract.functions.addConsumer(name, city, budget, duration, deadline).transact()
+                return self.contract.functions.addConsumer(mode, name, city, budget, duration, deadline).transact()
             except Exception as e:
                 print(f"Error in add_provider(): {e}")
                 if retry == 9:
@@ -113,7 +113,7 @@ def unix_now():
 
 
 if __name__ == '__main__':
-    num = 1000
+    num = 50
     budget_range = 5
     start_base = 3000000000
     start_range = 10000
@@ -141,6 +141,7 @@ if __name__ == '__main__':
             tx = rs.add_provider(f"provider #{i}", city, int(budget_range * rand) + 1,
                                  int(start_base + start_range * rand),
                                  int(end_base + end_range * rand))
+            print(f"gas used: {rs.get_transaction(tx)['gas']}")
             gas_provider += rs.get_transaction(tx)['gas']
 
             # add consumer
@@ -149,6 +150,7 @@ if __name__ == '__main__':
             consumer_creation[name] = unix_now()
             tx = rs.add_consumer(name, city, int(budget_range * rand) + 1, int(duration_base + duration_range * rand),
                                  deadline_base)
+            print(f"gas used: {rs.get_transaction(tx)['gas']}")
             gas_consumer += rs.get_transaction(tx)['gas']
 
         matches_from = rs.list_matches(rs.accounts[0])
