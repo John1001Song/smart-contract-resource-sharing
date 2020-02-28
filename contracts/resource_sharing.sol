@@ -86,32 +86,43 @@ contract ResourceSharing is ProviderLib, StorageLib {
 
 
     function addConsumerByMode(string memory mode, string memory _name, string memory _region, uint _budget, uint _duration) public returns (bool) {
-        string memory key = getProviderKey(_region, mode);
+        string[3] memory strArr = [getProviderKey(_region, mode), _name, _region];
+        /*
+            strArr[0] = key;
+            strArr[1] = _name;
+            strArr[2] = _region;
+        */
+        uint[2] memory uintArr = [_budget, _duration];
+        /*
+            uintArr[0] = _budget;
+            uintArr[1] = _duration;
+        */
 
         // remove expired providers
-        removeExpiredProviders(headMap, providerMap, providerIndexMap, key);
+        removeExpiredProviders(headMap, providerMap, providerIndexMap, strArr[0]);
 
-        bytes32 head = headMap[key];
+        bytes32 head = headMap[strArr[0]];
         if (head == 0x0) {
             // TODO: if no matching under current region, search adjacent regions
             return false;
         }
 
         // check head
-        ProviderLib.Provider memory nextProvider = providerMap[headMap[key]];
-        ProviderLib.ProviderIndex memory curIndex = providerIndexMap[key][nextProvider.id];
+        ProviderLib.Provider memory nextProvider = providerMap[headMap[strArr[0]]];
+        ProviderLib.ProviderIndex memory curIndex = providerIndexMap[strArr[0]][nextProvider.id];
         ProviderLib.ProviderIndex memory nextIndex;
         address[] memory stList = new address[](1);
 
-        if (isConsumerMatchProvider(maxMatchInterval, nextProvider.target, _budget, nextProvider.start, nextProvider.end, _duration)) {
+
+        if (isConsumerMatchProvider(maxMatchInterval, nextProvider.target, uintArr[0], nextProvider.start, nextProvider.end, uintArr[1])) {
             stList[0] = nextProvider.addr;
-            Matching memory m = Matching(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, nextProvider.start, _duration, stList);
+            Matching memory m = Matching(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, nextProvider.start, uintArr[1], stList);
             matchings[nextProvider.addr].push(m);
             matchings[msg.sender].push(m);
-            emit Matched(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, stList);
+            emit Matched(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, stList);
 
-            headMap[key] = curIndex.next;
-            removeProviderIndices(providerMap, providerIndexMap, _region, nextProvider.id);
+            headMap[strArr[0]] = curIndex.next;
+            removeProviderIndices(providerMap, providerIndexMap, strArr[2], nextProvider.id);
             return true;
         }
 
@@ -120,16 +131,16 @@ contract ResourceSharing is ProviderLib, StorageLib {
         while (true) {
             // TODO: if no matching under current region, search adjacent regions
             nextProvider = providerMap[curIndex.next];
-            nextIndex = providerIndexMap[key][curIndex.next];
-            if (curIndex.next == 0x0 || isConsumerMatchProvider(maxMatchInterval, nextProvider.target, _budget, nextProvider.start, nextProvider.end, _duration)) {
+            nextIndex = providerIndexMap[strArr[0]][curIndex.next];
+            if (curIndex.next == 0x0 || isConsumerMatchProvider(maxMatchInterval, nextProvider.target, uintArr[0], nextProvider.start, nextProvider.end, uintArr[1])) {
                 stList[0] = nextProvider.addr;
-                Matching memory m = Matching(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, nextProvider.start, _duration, stList);
+                Matching memory m = Matching(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, nextProvider.start, uintArr[1], stList);
                 matchings[nextProvider.addr].push(m);
                 matchings[msg.sender].push(m);
-                emit Matched(nextProvider.name, nextProvider.addr, _name, msg.sender, _region, nextProvider.target, now, stList);
+                emit Matched(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, stList);
 
-                providerIndexMap[key][curIndex.id].next = nextIndex.next;
-                removeProviderIndices(providerMap, providerIndexMap, _region, nextIndex.id);
+                providerIndexMap[strArr[0]][curIndex.id].next = nextIndex.next;
+                removeProviderIndices(providerMap, providerIndexMap, strArr[2], nextIndex.id);
                 return true;
             } else {
                 curIndex = nextIndex;
