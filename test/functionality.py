@@ -75,28 +75,30 @@ class Consumer:
 
 class Matching:
     def __init__(self):
-        self.provider_name = ""
-        self.provider_addr = ""
-        self.consumer_name = ""
-        self.consumer_addr = ""
+        self.matcher1_name = ""
+        self.matcher1_addr = ""
+        self.matcher2_name = ""
+        self.matcher2_addr = ""
         self.region = ""
         self.price = 0
         self.matched_time = 0
         self.start = 0
         self.duration = 0
+        self.storagerList = []
 
     @staticmethod
     def new(eth_matching):
         p = Matching()
-        p.provider_name = eth_matching[0]
-        p.provider_addr = eth_matching[1]
-        p.consumer_name = eth_matching[2]
-        p.consumer_addr = eth_matching[3]
+        p.matcher1_name = eth_matching[0]
+        p.matcher1_addr = eth_matching[1]
+        p.matcher2_name = eth_matching[2]
+        p.matcher2_addr = eth_matching[3]
         p.region = eth_matching[4]
         p.price = eth_matching[5]
         p.matched_time = eth_matching[6]
         p.start = eth_matching[7]
         p.duration = eth_matching[8]
+        # p.storagerList = eth_matching[9]
         return p
 
 
@@ -265,7 +267,7 @@ class TestResourceSharing(unittest.TestCase):
         self.assertEqual(now + 1, current.end)
 
         time.sleep(2)
-        rs.functions.removeExpiredProviders(key).transact()
+        rs.functions.RemoveExpiredProviders(key).transact()
 
         index = ProviderIndex.new(rs.functions.providerIndexMap(key, cur_bytes).call())
         self.assertTrue(self.is_byte32_empty(index.next))
@@ -346,10 +348,10 @@ class TestResourceSharing(unittest.TestCase):
 
         # match
         match = Matching.new(rs.functions.matchings(self.accounts[0], 0).call())
-        self.assertEqual("test", match.provider_name)
-        self.assertEqual(self.accounts[0], match.provider_addr)
-        self.assertEqual("consumer1", match.consumer_name)
-        self.assertEqual(self.accounts[1], match.consumer_addr)
+        self.assertEqual("test", match.matcher1_name)
+        self.assertEqual(self.accounts[0], match.matcher1_addr)
+        self.assertEqual("consumer1", match.matcher2_name)
+        self.assertEqual(self.accounts[1], match.matcher2_addr)
         self.assertEqual(region, match.region)
         self.assertEqual(1, match.price)
         self.assertEqual(start, match.start)

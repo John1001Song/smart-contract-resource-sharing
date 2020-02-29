@@ -89,7 +89,7 @@ contract ResourceSharing is ProviderLib, StorageLib {
         string[] memory strArr = new string[](3);
         strArr[0] = getProviderKey(_region, mode);
         strArr[1] = _name;
-        strArr[1] = _region;
+        strArr[2] = _region;
         /*
             strArr[0] = key;
             strArr[1] = _name;
@@ -158,5 +158,8 @@ contract ResourceSharing is ProviderLib, StorageLib {
         return StorageLib.addStorager(storageHeadMap, storagerMap, _name, _region, _size);
     }
 
+    function RemoveExpiredProviders(string memory _key) public {
+        removeExpiredProviders(headMap, providerMap, providerIndexMap, _key);
+    }
 }
 
