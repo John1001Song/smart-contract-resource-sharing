@@ -98,7 +98,7 @@ class Matching:
         p.matched_time = eth_matching[6]
         p.start = eth_matching[7]
         p.duration = eth_matching[8]
-        # p.storagerList = eth_matching[9]
+        p.storagerList = [eth_matching[9], eth_matching[10]]
         return p
 
 
@@ -356,6 +356,7 @@ class TestResourceSharing(unittest.TestCase):
         self.assertEqual(1, match.price)
         self.assertEqual(start, match.start)
         self.assertEqual(100, match.duration)
+        self.assertEqual(self.accounts[0], match.storagerList[0])
 
     @staticmethod
     def is_byte32_empty(_id):

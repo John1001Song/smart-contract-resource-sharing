@@ -27,7 +27,8 @@ contract ResourceSharing is ProviderLib, StorageLib {
         uint matchedTime;
         uint start;
         uint duration;
-        address[] storagers;
+        address storager1;
+        address storager2;
         // uint matchType; // 1: provider+consumer; 2: provider+storager;
     }
 
@@ -116,12 +117,10 @@ contract ResourceSharing is ProviderLib, StorageLib {
         ProviderLib.Provider memory nextProvider = providerMap[headMap[strArr[0]]];
         ProviderLib.ProviderIndex memory curIndex = providerIndexMap[strArr[0]][nextProvider.id];
         ProviderLib.ProviderIndex memory nextIndex;
-        address[] memory stList = new address[](1);
 
 
         if (isConsumerMatchProvider(maxMatchInterval, nextProvider.target, uintArr[0], nextProvider.start, nextProvider.end, uintArr[1])) {
-            stList[0] = nextProvider.addr;
-            Matching memory m = Matching(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, nextProvider.start, uintArr[1], stList);
+            Matching memory m = Matching(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, nextProvider.start, uintArr[1], nextProvider.addr, address(0));
             matchings[nextProvider.addr].push(m);
             matchings[msg.sender].push(m);
             // emit Matched(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, stList);
@@ -138,8 +137,7 @@ contract ResourceSharing is ProviderLib, StorageLib {
             nextProvider = providerMap[curIndex.next];
             nextIndex = providerIndexMap[strArr[0]][curIndex.next];
             if (curIndex.next == 0x0 || isConsumerMatchProvider(maxMatchInterval, nextProvider.target, uintArr[0], nextProvider.start, nextProvider.end, uintArr[1])) {
-                stList[0] = nextProvider.addr;
-                Matching memory m = Matching(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, nextProvider.start, uintArr[1], stList);
+                Matching memory m = Matching(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, nextProvider.start, uintArr[1], nextProvider.addr, address(0));
                 matchings[nextProvider.addr].push(m);
                 matchings[msg.sender].push(m);
                 // emit Matched(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now);
