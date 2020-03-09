@@ -358,6 +358,43 @@ class TestResourceSharing(unittest.TestCase):
         self.assertEqual(100, match.duration)
         self.assertEqual(self.accounts[0], match.storagerList[0])
 
+    def test_add_consumer_head_expired(self):
+        # should match
+        rs = self.deploy()
+        rs.functions.addProvider("should match", "SF", 1, start, end).transact()
+
+        now = int(datetime.now().timestamp())
+        rs.functions.addProvider("expire1", "SF", 1, now-1, now + 1).transact()
+        time.sleep(1)
+        rs.functions.addProvider("expire2", "SF", 1, now, now + 2).transact()
+
+        # check provider head
+        key = "SF||min_latency"
+        cur_bytes = rs.functions.headMap(key).call()
+        current = Provider.new(rs.functions.providerMap(cur_bytes).call())
+        self.assertEqual("expire2", current.name)
+
+        time.sleep(3)
+
+        # add consumer
+        self.set_address(self.accounts[1])
+        rs.functions.addConsumer("min_cost", "consumer1", "SF", 1, 100, end).transact()
+
+        key = "SF||min_cost"
+        index = ProviderIndex.new(rs.functions.providerIndexMap(key, cur_bytes).call())
+        self.assertTrue(self.is_byte32_empty(index.id))
+
+        # match
+        match = Matching.new(rs.functions.matchings(self.accounts[1], 0).call())
+        self.assertEqual("should match", match.matcher1_name)
+        self.assertEqual(self.accounts[0], match.matcher1_addr)
+        self.assertEqual("consumer1", match.matcher2_name)
+        self.assertEqual(self.accounts[1], match.matcher2_addr)
+        self.assertEqual("SF", match.region)
+        self.assertEqual(1, match.price)
+        self.assertEqual(start, match.start)
+        self.assertEqual(100, match.duration)
+
     @staticmethod
     def is_byte32_empty(_id):
         return Web3.toHex(_id) == '0x0000000000000000000000000000000000000000000000000000000000000000'
