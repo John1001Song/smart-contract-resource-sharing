@@ -82,66 +82,59 @@ contract ResourceSharing is ProviderLib, StorageLib {
     function addConsumer(string memory _mode, string memory _name, string memory _region, uint _budget, uint _duration, uint _deadline) public returns (bool) {
         require(now + _duration + maxMatchInterval < _deadline, "not enough time to consume resource");
 
-        if (keccak256(bytes(_mode)) == keccak256(bytes("min_latency"))) {
-            return addConsumerByModeMinLatency(_name, _region, _budget, _duration);
-        } else if (keccak256(bytes(_mode)) == keccak256(bytes("min_cost"))) {
-            //            return addConsumerByModeMinCost(_mode, _name, _region, _budget, _duration);
+        if (keccak256(bytes(_mode)) != keccak256(bytes("min_latency")) &&
+        keccak256(bytes(_mode)) != keccak256(bytes("min_cost"))) {
             return false;
         }
-        return false;
+        return addConsumerByMode(_mode, _name, _region, _budget, _duration);
     }
 
 
-    function addConsumerByModeMinLatency(string memory _name, string memory _region, uint _budget, uint _duration) public returns (bool) {
-        string[] memory strArr = new string[](3);
-        strArr[0] = getProviderKey(_region, "min_latency");
+    function addConsumerByMode(string memory _mode, string memory _name, string memory _region, uint _budget, uint _duration) public returns (bool) {
+        string[] memory strArr = new string[](4);
+        strArr[0] = getProviderKey(_region, _mode);
         strArr[1] = _name;
         strArr[2] = _region;
+        strArr[3] = _mode;
         /*
             strArr[0] = key;
             strArr[1] = _name;
             strArr[2] = _region;
+            strArr[3] = _mode;
         */
-        uint[] memory uintArr = new uint[](2);
+        uint[] memory uintArr = new uint[](3);
         uintArr[0] = _budget;
         uintArr[1] = _duration;
+        uintArr[2] = 1;
         /*
             uintArr[0] = _budget;
             uintArr[1] = _duration;
+            uintArr[2] = if update headMap, 1=update
         */
 
-        // remove expired providers
-        removeExpiredProvidersModeMinLatency(headMap, providerMap, providerIndexMap, strArr[0]);
-
-        if (headMap[strArr[0]] == 0x0) {
-            // TODO: if no matching under current region, search adjacent regions
-            return false;
-        }
-
-        // get head
         Provider memory nextProvider = providerMap[headMap[strArr[0]]];
-        ProviderIndex memory curIndex = providerIndexMap[strArr[0]][nextProvider.id];
-        ProviderIndex memory nextIndex;
-
-
-        if (isConsumerMatchProvider(maxMatchInterval, nextProvider.target, uintArr[0], nextProvider.start, nextProvider.end, uintArr[1])) {
-            Matching memory m = Matching(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, nextProvider.start, uintArr[1], nextProvider.addr, address(0));
-            matchings[nextProvider.addr].push(m);
-            matchings[msg.sender].push(m);
-            // emit Matched(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, stList);
-
-            headMap[strArr[0]] = curIndex.next;
-            delete (providerMap[nextProvider.id]);
-            delete (providerIndexMap[strArr[0]][nextProvider.id]);
-            return true;
-        }
+        ProviderIndex memory curIndex;
+        ProviderIndex memory nextIndex = providerIndexMap[strArr[0]][nextProvider.id];
 
         // iterate all providers
         while (true) {
-            // TODO: if no matching under current region, search adjacent regions
-            nextProvider = providerMap[curIndex.next];
-            nextIndex = providerIndexMap[strArr[0]][curIndex.next];
-            if (curIndex.next == 0x0 || isConsumerMatchProvider(maxMatchInterval, nextProvider.target, uintArr[0], nextProvider.start, nextProvider.end, uintArr[1])) {
+            if (nextIndex.id == 0x0) {
+                // TODO: if no matching under current region, search adjacent regions
+                return false;
+            }
+            if (nextProvider.end < now) {
+                // expire
+                delete (providerMap[nextProvider.id]);
+                delete (providerIndexMap[strArr[0]][nextProvider.id]);
+                curIndex = nextIndex;
+                nextProvider = providerMap[curIndex.next];
+                nextIndex = providerIndexMap[strArr[0]][curIndex.next];
+                if (uintArr[2] == 1) {
+                    headMap[strArr[0]] = nextIndex.id;
+                }
+                continue;
+            }
+            if (isConsumerMatchProvider(maxMatchInterval, nextProvider.target, uintArr[0], nextProvider.start, nextProvider.end, uintArr[1])) {
                 Matching memory m = Matching(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, nextProvider.start, uintArr[1], nextProvider.addr, address(0));
                 matchings[nextProvider.addr].push(m);
                 matchings[msg.sender].push(m);
@@ -150,10 +143,15 @@ contract ResourceSharing is ProviderLib, StorageLib {
                 providerIndexMap[strArr[0]][curIndex.id].next = nextIndex.next;
                 delete (providerMap[nextIndex.id]);
                 delete (providerIndexMap[strArr[0]][nextIndex.id]);
+                if (uintArr[2] == 1) {
+                    headMap[strArr[0]] = nextIndex.next;
+                }
                 return true;
             } else {
+                uintArr[2] = 0;
                 curIndex = nextIndex;
-                require(1 > 2, "bad");
+                nextProvider = providerMap[curIndex.id];
+                nextIndex = providerIndexMap[strArr[0]][curIndex.next];
             }
         }
         return false;
