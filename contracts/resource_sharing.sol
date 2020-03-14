@@ -57,16 +57,18 @@ contract ResourceSharing is ProviderLib, StorageLib {
         regionList.push("CHINA");
     }
 
-    function addProvider(string memory _name, string memory _region, uint _target, uint _start, uint _end) public returns (bool) {
+    function addProvider(string memory _mode, string memory _name, string memory _region, uint _target, uint _start, uint _end) public returns (bool) {
         require(_end > now, "bad end time");
         require(_start < _end, "bad start time");
 
         bytes32 id = keccak256(abi.encodePacked(_name, _target, _start, _end, now));
 
-        if (keccak256(bytes(_mode)) != keccak256(bytes("min_latency"))) {
+        if (keccak256(bytes(_mode)) == keccak256(bytes("min_latency"))) {
             addProviderIndexModeMinLatency(headMap, providerMap, providerIndexMap, id, _region, _start, _end);
         } else if (keccak256(bytes(_mode)) == keccak256(bytes("min_cost"))) {
             addProviderIndexModeMinCost(headMap, providerMap, providerIndexMap, id, _region, _target, _start, _end);
+        } else {
+            return false;
         }
 
         // add provider
@@ -80,17 +82,19 @@ contract ResourceSharing is ProviderLib, StorageLib {
     function addConsumer(string memory _mode, string memory _name, string memory _region, uint _budget, uint _duration, uint _deadline) public returns (bool) {
         require(now + _duration + maxMatchInterval < _deadline, "not enough time to consume resource");
 
-        if (keccak256(bytes(_mode)) != keccak256(bytes("min_latency")) {
+        if (keccak256(bytes(_mode)) == keccak256(bytes("min_latency"))) {
             return addConsumerByModeMinLatency(_name, _region, _budget, _duration);
         } else if (keccak256(bytes(_mode)) == keccak256(bytes("min_cost"))) {
-            return addConsumerByModeMinCost(_mode, _name, _region, _budget, _duration);
+            //            return addConsumerByModeMinCost(_mode, _name, _region, _budget, _duration);
+            return false;
         }
+        return false;
     }
 
 
     function addConsumerByModeMinLatency(string memory _name, string memory _region, uint _budget, uint _duration) public returns (bool) {
         string[] memory strArr = new string[](3);
-        strArr[0] = getProviderKey(_region, _mode);
+        strArr[0] = getProviderKey(_region, "min_latency");
         strArr[1] = _name;
         strArr[2] = _region;
         /*
@@ -127,7 +131,8 @@ contract ResourceSharing is ProviderLib, StorageLib {
             // emit Matched(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now, stList);
 
             headMap[strArr[0]] = curIndex.next;
-            removeProviderIndices(providerMap, providerIndexMap, strArr[2], nextProvider.id);
+            delete (providerMap[nextProvider.id]);
+            delete (providerIndexMap[strArr[0]][nextProvider.id]);
             return true;
         }
 
@@ -143,10 +148,12 @@ contract ResourceSharing is ProviderLib, StorageLib {
                 // emit Matched(nextProvider.name, nextProvider.addr, strArr[1], msg.sender, strArr[2], nextProvider.target, now);
 
                 providerIndexMap[strArr[0]][curIndex.id].next = nextIndex.next;
-                removeProviderIndices(providerMap, providerIndexMap, strArr[2], nextIndex.id);
+                delete (providerMap[nextIndex.id]);
+                delete (providerIndexMap[strArr[0]][nextIndex.id]);
                 return true;
             } else {
                 curIndex = nextIndex;
+                require(1 > 2, "bad");
             }
         }
         return false;
@@ -156,7 +163,7 @@ contract ResourceSharing is ProviderLib, StorageLib {
         return StorageLib.addStorager(storageHeadMap, storagerMap, _name, _region, _size);
     }
 
-    function removeExpiredProvidersModeMinLatency(string memory _key) public {
+    function RemoveExpiredProvidersModeMinLatency(string memory _key) public {
         removeExpiredProvidersModeMinLatency(headMap, providerMap, providerIndexMap, _key);
     }
 

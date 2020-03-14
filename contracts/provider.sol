@@ -94,32 +94,36 @@ contract ProviderLib {
         ProviderIndex memory curIndex = providerIndexMap[key][next.id];
         ProviderIndex memory newIndex;
 
-        // check first
+        // remove expired heads
         while (true) {
             if (next.id == 0x0) {
                 break;
-            } else if (next.end <= now) {
+            }
+            if (next.end <= now) {
                 // expire
                 delete (providerMap[next.id]);
                 delete (providerIndexMap[key][next.id]);
                 headMap[key] = curIndex.next;
                 curIndex = providerIndexMap[key][curIndex.next];
-                next = providerMap[key][curIndex.id];
+                next = providerMap[curIndex.id];
+            } else {
+                break;
             }
+
         }
         if (isBetweenCurrentAndNextModeMinCost(headMap[key], _target, next.target, _start, _end, next.start, next.end)) {
             newIndex = ProviderIndex(id, next.id);
             headMap[key] = id;
             providerIndexMap[key][id] = newIndex;
             return true;
-        } 
+        }
 
         // iterate
         while (true) {
             newIndex = providerIndexMap[key][curIndex.next];
             next = providerMap[curIndex.next];
             // check next provider is valid
-            if (next.id != 0x0 && next.end <= now()) {
+            if (next.id != 0x0 && next.end <= now) {
                 // expire
                 delete (providerMap[newIndex.id]);
                 delete (providerIndexMap[key][newIndex.id]);
@@ -129,9 +133,11 @@ contract ProviderLib {
             } else if (curIndex.next == 0x0 || isBetweenCurrentAndNextModeMinCost(next.id, _target, next.target, _start, _end, next.start, next.end)) {
                 newIndex = ProviderIndex(id, curIndex.next);
                 providerIndexMap[key][id] = newIndex;
-                providerIndexMap[key][current.id].next = newIndex.id;
+                curIndex.next = id;
+                providerIndexMap[key][curIndex.id] = curIndex;
                 return true;
             }
+            curIndex = newIndex;
         }
         return false;
     }
