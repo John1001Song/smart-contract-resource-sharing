@@ -134,7 +134,7 @@ class TestResourceSharing(unittest.TestCase):
         head = rs.functions.headMap("SF").call()
         self.assertTrue(self.is_byte32_empty(head), "bad start time, head should be empty")
 
-    def test_add_providers(self):
+    def test_add_providers_mode_min_latency(self):
         rs = self.deploy()
         mode = "min_latency"
 
@@ -184,9 +184,9 @@ class TestResourceSharing(unittest.TestCase):
         rs = self.deploy()
         mode = "min_cost"
 
-        rs.functions.addProvider(mode, "hello", "SF", 3, start + 1, end).transact()
-        rs.functions.addProvider(mode, "world", "SF", 2, start, end).transact()
-        rs.functions.addProvider(mode, "test", "SF", 1, start, end).transact()
+        rs.functions.addProvider(mode, "provider3", "SF", 3, start, end).transact()
+        rs.functions.addProvider(mode, "provider2", "SF", 2, start, end).transact()
+        rs.functions.addProvider(mode, "provider1", "SF", 1, start, end).transact()
         rs.functions.addProvider(mode, "provider4", "SF", 4, start, end + 1).transact()
 
         key = "SF||min_cost"
@@ -195,7 +195,7 @@ class TestResourceSharing(unittest.TestCase):
 
         index = ProviderIndex.new(rs.functions.providerIndexMap(key, cur_bytes).call())
         current = Provider.new(rs.functions.providerMap(index.id).call())
-        self.assertEqual("test", current.name)
+        self.assertEqual("provider1", current.name)
         self.assertEqual("SF", current.region)
         self.assertEqual(1, current.target)
         self.assertEqual(start, current.start)
@@ -203,7 +203,7 @@ class TestResourceSharing(unittest.TestCase):
 
         index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
         current = Provider.new(rs.functions.providerMap(index.id).call())
-        self.assertEqual("world", current.name)
+        self.assertEqual("provider2", current.name)
         self.assertEqual("SF", current.region)
         self.assertEqual(2, current.target)
         self.assertEqual(start, current.start)
@@ -211,10 +211,10 @@ class TestResourceSharing(unittest.TestCase):
 
         index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
         current = Provider.new(rs.functions.providerMap(index.id).call())
-        self.assertEqual("hello", current.name)
+        self.assertEqual("provider3", current.name)
         self.assertEqual("SF", current.region)
         self.assertEqual(3, current.target)
-        self.assertEqual(start + 1, current.start)
+        self.assertEqual(start , current.start)
         self.assertEqual(end, current.end)
 
         index = ProviderIndex.new(rs.functions.providerIndexMap(key, index.next).call())
@@ -327,7 +327,7 @@ class TestResourceSharing(unittest.TestCase):
             return
         self.assertTrue(False, "matching should raise error")
 
-    def test_add_consumer(self):
+    def test_add_consumer_mode_min_latency(self):
         rs = self.deploy()
         mode = "min_latency"
 

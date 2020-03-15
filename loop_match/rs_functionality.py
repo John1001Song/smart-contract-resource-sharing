@@ -44,7 +44,7 @@ class ResourceSharing:
         print(f"add provider, name={name}, city={city}, target={target}, start={start}, end={end}")
         for retry in range(10):
             try:
-                return self.contract.functions.addProvider(name, city, target, start, end).transact()
+                return self.contract.functions.addProvider("min_latency", name, city, target, start, end).transact()
             except Exception as e:
                 print(f"Error in add_provider(): {e}")
                 if retry == 9:
