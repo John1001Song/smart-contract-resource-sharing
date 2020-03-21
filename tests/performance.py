@@ -3,6 +3,7 @@ import random
 import time
 from web3 import Web3
 from datetime import datetime
+from tests.functionality import Provider, Consumer, Matching
 
 contract_path = '../build/contracts/ResourceSharing.json'
 ganache_url = 'http://localhost:7545'
@@ -62,24 +63,31 @@ class ResourceSharing:
                     print(f"Error in add_provider(): {e}")
                 continue
 
-    def get_head(self, city):
-        return self.contract.functions.headList(city).call()
+    def get_head(self, city, mode="min_latency"):
+        return self.contract.functions.headMap(f"{city}||{mode}").call()
 
     def get_provider(self, _id):
-        return self.contract.functions.providerList(_id).call()
+        return Provider.new(self.contract.functions.providerMap(_id).call())
+
+    def get_provider_list(self, _id, city, mode="min_latency"):
+        return self.contract.functions.providerIndexMap(f"{city}||{mode}", _id).call()
 
     def list_providers(self, city):
+        provider_list = []
         _id = self.get_head(city)
         print(f"\n{print_delimiter} list providers {print_delimiter}")
         while True:
             if self.is_byte32_empty(_id):
                 break
             provider = self.get_provider(_id)
-            print(f"name={provider[2]}, city={provider[3]}, address={provider[4]}, target={provider[5]}, "
-                  f"start={provider[6]}, end={provider[7]}, id={provider[0]}, next={provider[1]}")
-            _id = provider[1]
+            print(f"provider={provider}")
+            provider_list.append(provider)
+
+            index = self.get_provider_list(_id, city)
+            _id = index[1]
 
         print(f"//////////////////////////////////////////////////\n")
+        return provider_list
 
     def list_matches(self, _address):
         matches = list()
@@ -88,7 +96,7 @@ class ResourceSharing:
         while True:
             try:
                 match = self.contract.functions.matchings(_address, idx).call()
-                matches.append(match)
+                matches.append(Matching.new(match))
                 # print(match)
                 idx += 1
 
@@ -133,22 +141,23 @@ if __name__ == '__main__':
         gas_consumer = 0
 
         for i in range(num):
-            rand = random.random()
             rs.set_address(rs.accounts[0])
 
             # add providers
             city = cities[int(random.random() * len(cities))]
-            tx = rs.add_provider(f"provider #{i}", city, int(budget_range * rand) + 1,
-                                 int(start_base + start_range * rand),
-                                 int(end_base + end_range * rand))
+            tx = rs.add_provider(f"provider #{i}", city, int(budget_range * random.random()) + 1,
+                                 int(start_base + start_range * random.random()),
+                                 int(end_base + end_range * random.random()))
             print(f"gas used: {rs.get_transaction(tx)['gas']}")
             gas_provider += rs.get_transaction(tx)['gas']
 
+        for i in range(num):
             # add consumer
             rs.set_address(rs.accounts[1])
             name = f"consumer #{i}"
             consumer_creation[name] = unix_now()
-            tx = rs.add_consumer(name, city, int(budget_range * rand) + 1, int(duration_base + duration_range * rand),
+            tx = rs.add_consumer(name, city, int(budget_range * random.random()) + 1,
+                                 int(duration_base + duration_range * random.random()),
                                  deadline_base)
             print(f"gas used: {rs.get_transaction(tx)['gas']}")
             gas_consumer += rs.get_transaction(tx)['gas']
@@ -163,7 +172,7 @@ if __name__ == '__main__':
         # average matching time cost
         time_total = 0
         for each in matches_from:
-            time_total += each[6] - consumer_creation[each[2]]
+            time_total += each.matched_time - consumer_creation[each.matcher2_name]
         print(f"\nMatching time cost:\ntotal={time_total}s, num={num}, average_time_cost={time_total / num}s")
 
         # average gas cost
