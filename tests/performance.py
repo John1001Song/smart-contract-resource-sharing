@@ -9,6 +9,8 @@ contract_path = '../build/contracts/ResourceSharing.json'
 ganache_url = 'http://localhost:7545'
 print_delimiter = '=========='
 max_match_interval = 100 * 1000
+save_dir = '../statistics/'
+all_cities = ["SF", "NYC", "SH", "LA"]
 
 
 class ResourceSharing:
@@ -120,9 +122,15 @@ def unix_now():
     return int(time.mktime(datetime.now().utctimetuple()))
 
 
-if __name__ == '__main__':
-    num = 50
-    budget_range = 5
+def log_and_save(p, msg):
+    print(msg)
+    with open(p, "a") as f:
+        f.write(msg)
+        f.write("\n")
+
+
+def run(num, budget_range, city_num):
+    cities = all_cities[:city_num]
     start_base = 3000000000
     start_range = 10000
     end_base = 4000000000
@@ -130,7 +138,9 @@ if __name__ == '__main__':
     duration_base = int((end_base - start_base) * 3 / 4)
     duration_range = int((end_base - start_base) * 1 / 4)
     deadline_base = 5000000000
-    cities = ["SF"]
+
+    filename = f"rs_{len(cities)}city_budget{budget_range}_{num}v{num}"
+    save_path = f"{save_dir}{filename}"
 
     for j in range(1):
         rs = ResourceSharing()
@@ -165,18 +175,29 @@ if __name__ == '__main__':
         matches_from = rs.list_matches(rs.accounts[0])
         matches_to = rs.list_matches(rs.accounts[1])
         if len(matches_from) != len(matches_to):
-            print(f"Error! len_matches_from={len(matches_from)}, len_matches_to={len(matches_to)}")
-        print(f"Engagement:\ntotal={num}, matches={len(matches_from)}, "
-              f"engagement_rate={round(len(matches_from) / num * 100, 5)} % ")
+            msg = f"Error! len_matches_from={len(matches_from)}, len_matches_to={len(matches_to)}"
+            log_and_save(save_path, msg)
+        msg = f"Engagement:\ntotal={num}, matches={len(matches_from)}, " \
+            f"engagement_rate={round(len(matches_from) / num * 100, 5)} % "
+        log_and_save(save_path, msg)
 
         # average matching time cost
         time_total = 0
         for each in matches_from:
             time_total += each.matched_time - consumer_creation[each.matcher2_name]
-        print(f"\nMatching time cost:\ntotal={time_total}s, num={num}, average_time_cost={time_total / num}s")
+        msg = f"\nMatching time cost:\ntotal={time_total}s, num={num}, average_time_cost={time_total / num}s"
+        log_and_save(save_path, msg)
 
         # average gas cost
-        print(f"\nAdd provider gas cost:\ntotal={gas_provider}, num={num}, "
-              f"average_gas_cost={gas_provider / num}wei = {gas_provider / num / 10 ** 18} ether")
-        print(f"\nAdd consumer and matching gas cost:\ntotal={gas_consumer}, num={num}, "
-              f"average_gas_cost={gas_consumer / num}wei = {gas_consumer / num / 10 ** 18} ether")
+        msg = f"\nAdd provider gas cost:\ntotal={gas_provider}, num={num}, " \
+            f"average_gas_cost={gas_provider / num}wei = {gas_provider / num / 10 ** 18} ether"
+        log_and_save(save_path, msg)
+        msg = f"\nAdd consumer and matching gas cost:\ntotal={gas_consumer}, num={num}, " \
+            f"average_gas_cost={gas_consumer / num}wei = {gas_consumer / num / 10 ** 18} ether"
+        log_and_save(save_path, msg)
+        log_and_save(save_path, "\n\n")
+
+
+if __name__ == '__main__':
+    for i in range(10):
+        run(25, 5, 2)

@@ -10,3 +10,4 @@ linked_list/src/images
 
 .idea
 build
+*.pyc
