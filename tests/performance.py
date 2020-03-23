@@ -163,6 +163,7 @@ def run(num, budget_range, city_num):
 
         for i in range(num):
             # add consumer
+            city = cities[int(random.random() * len(cities))]
             rs.set_address(rs.accounts[1])
             name = f"consumer #{i}"
             consumer_creation[name] = unix_now()
